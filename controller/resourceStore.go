@@ -257,6 +257,72 @@ func (rs *ResourceStore) deleteAllFiles(key string) error {
 	return handleEtcdError(err, "file", key)
 }
 
+func (rs *ResourceStore) writeVersion(parentKey string, version *fission.Version) (string, error) {
+	parentKey = "version/" + parentKey
+	serialized, err := rs.serializer.serialize(version)
+	if err != nil {
+		return "", err
+	}
+
+	resp, err := rs.KeysAPI.CreateInOrder(context.Background(), parentKey, string(serialized), nil)
+	if err != nil {
+		return "", handleEtcdError(err, "version", parentKey)
+	}
+
+	return resp.Node.Key, nil
+}
+
+func (rs *ResourceStore) deleteVersion(key string, uid string) error {
+	key = "version/" + key
+	resp, err := rs.KeysAPI.Get(context.Background(), key, &client.GetOptions{Sort: true})
+	if err != nil {
+		return handleEtcdError(err, "version", key)
+	}
+
+	var node *client.Node
+	for _, u := range resp.Node.Nodes {
+		res := &fission.Version{}
+		err = rs.serializer.deserialize([]byte(u.Value), res)
+		if err != nil {
+			return handleEtcdError(err, "version", key)
+		}
+		if res.Uid == uid {
+			node = u
+		}
+	}
+	if node == nil {
+		log.WithFields(log.Fields{"key": key, "uid": uid}).Error("unreferenced version")
+		return errors.New("won't delete unreferenced version")
+	}
+
+	_, err = rs.KeysAPI.Delete(context.Background(), node.Key, nil)
+	if err != nil {
+		return handleEtcdError(err, "", node.Key)
+	}
+
+	if len(resp.Node.Nodes) == 1 {
+		_, err = rs.KeysAPI.Delete(context.Background(), key, &client.DeleteOptions{Dir: true})
+		return handleEtcdError(err, "version", key)
+	}
+	return nil
+}
+
+func (rs *ResourceStore) deleteAllVersions(key string) error {
+	key = "version/" + key
+	resp, err := rs.KeysAPI.Get(context.Background(), key, &client.GetOptions{Sort: true})
+	if err != nil {
+		return handleEtcdError(err, "version", key)
+	}
+	for _, u := range resp.Node.Nodes {
+		_, err = rs.KeysAPI.Delete(context.Background(), u.Key, nil)
+		if err != nil {
+			return handleEtcdError(err, "", u.Key)
+		}
+	}
+	_, err = rs.KeysAPI.Delete(context.Background(), key, &client.DeleteOptions{Dir: true})
+	return handleEtcdError(err, "version", key)
+}
+
 func handleEtcdErrorForResource(e error, r resource) error {
 	resourceType, _ := getTypeName(r)
 	return handleEtcdError(e, resourceType, r.Key())

@@ -229,6 +229,27 @@ func (c *Client) FunctionList() ([]fission.Function, error) {
 	return funcs, nil
 }
 
+func (c *Client) FunctionListVersions(m *fission.Metadata) ([]fission.Version, error) {
+	relativeUrl := fmt.Sprintf("functions/%v/versions", m.Name)
+	resp, err := http.Get(c.url(relativeUrl))
+	if err != nil {
+		return nil, err
+	}
+
+	body, err := c.handleResponse(resp)
+	if err != nil {
+		return nil, err
+	}
+
+	versions := make([]fission.Version, 0)
+	err = json.Unmarshal(body, &versions)
+	if err != nil {
+		return nil, err
+	}
+
+	return versions, nil
+}
+
 func (c *Client) HTTPTriggerCreate(t *fission.HTTPTrigger) (*fission.Metadata, error) {
 	reqbody, err := json.Marshal(t)
 	if err != nil {

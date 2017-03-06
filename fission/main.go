@@ -56,6 +56,7 @@ func main() {
 		{Name: "list", Usage: "List all functions", Flags: []cli.Flag{}, Action: fnList},
 		{Name: "logs", Usage: "Display funtion logs", Flags: []cli.Flag{fnNameFlag, fnPodFlag, fnFollowFlag, fnDetailFlag, fnLogDBTypeFlag}, Action: fnLogs},
 		{Name: "pods", Usage: "Display funtion pods", Flags: []cli.Flag{fnNameFlag, fnLogDBTypeFlag}, Action: fnPods},
+		{Name: "versions", Usage: "List all versions of the function", Flags: []cli.Flag{fnNameFlag}, Action: fnListVersions},
 	}
 
 	// httptriggers

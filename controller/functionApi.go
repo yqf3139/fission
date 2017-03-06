@@ -205,3 +205,23 @@ func (api *API) FunctionLogsApiPost(w http.ResponseWriter, r *http.Request) {
 	}
 	proxy.ServeHTTP(w, r)
 }
+
+func (api *API) FunctionApiListVersions(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	var m fission.Metadata
+	m.Name = vars["function"]
+
+	versions, err := api.FunctionStore.ListVersions(m)
+	if err != nil {
+		api.respondWithError(w, err)
+		return
+	}
+
+	resp, err := json.Marshal(versions)
+	if err != nil {
+		api.respondWithError(w, err)
+		return
+	}
+
+	api.respondWithSuccess(w, resp)
+}

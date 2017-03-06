@@ -43,3 +43,7 @@ func (w Watch) Key() string {
 func (sa ServiceAdapter) Key() string {
 	return sa.Metadata.Name
 }
+
+func (v Version) Key() string {
+	return v.Name
+}
