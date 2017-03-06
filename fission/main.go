@@ -48,6 +48,7 @@ func main() {
 		{Name: "update", Usage: "Update function source code", Flags: []cli.Flag{fnNameFlag, fnEnvNameFlag, fnCodeFlag}, Action: fnUpdate},
 		{Name: "delete", Usage: "Delete function", Flags: []cli.Flag{fnNameFlag, fnUidFlag}, Action: fnDelete},
 		{Name: "list", Usage: "List all functions", Flags: []cli.Flag{}, Action: fnList},
+		{Name: "listversion", Usage: "List all versions of the function", Flags: []cli.Flag{fnNameFlag}, Action: fnListVersions},
 	}
 
 	// httptriggers

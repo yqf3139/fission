@@ -16,6 +16,12 @@ limitations under the License.
 
 package fission
 
+import (
+	"time"
+	"fmt"
+	"strconv"
+)
+
 type (
 	// Metadata is used as the general identifier for all kinds of
 	// resources managed by the controller.
@@ -67,6 +73,13 @@ type (
 		Target string `json:"target"` // Watch publish target (URL, NATS stream, etc)
 	}
 
+	// Version tracks version related info of the resource with Uid
+	Version struct {
+		Name string         `json:"name"`
+		Timestamp Timestamp `json:"timestamp"`
+		Uid string          `json:"uid"`
+	}
+
 	// Errors returned by the Fission API.
 	Error struct {
 		Code    errorCode `json:"code"`
@@ -75,6 +88,28 @@ type (
 
 	errorCode int
 )
+
+type Timestamp struct {
+	time.Time
+}
+
+func (t *Timestamp) MarshalJSON() ([]byte, error) {
+	ts := t.Time.Unix()
+	stamp := fmt.Sprint(ts)
+
+	return []byte(stamp), nil
+}
+
+func (t *Timestamp) UnmarshalJSON(b []byte) error {
+	ts, err := strconv.Atoi(string(b))
+	if err != nil {
+		return err
+	}
+
+	t.Time = time.Unix(int64(ts), 0)
+
+	return nil
+}
 
 const (
 	ErrorInternal = iota

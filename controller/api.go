@@ -74,6 +74,7 @@ func (api *API) Serve(port int) {
 	r.HandleFunc("/v1/functions/{function}", api.FunctionApiGet).Methods("GET")
 	r.HandleFunc("/v1/functions/{function}", api.FunctionApiUpdate).Methods("PUT")
 	r.HandleFunc("/v1/functions/{function}", api.FunctionApiDelete).Methods("DELETE")
+	r.HandleFunc("/v1/functions/{function}/versions", api.FunctionApiListVersions).Methods("GET")
 
 	r.HandleFunc("/v1/triggers/http", api.HTTPTriggerApiList).Methods("GET")
 	r.HandleFunc("/v1/triggers/http", api.HTTPTriggerApiCreate).Methods("POST")

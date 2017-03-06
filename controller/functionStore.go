@@ -20,6 +20,8 @@ import (
 	log "github.com/Sirupsen/logrus"
 
 	"github.com/fission/fission"
+	"github.com/satori/go.uuid"
+	"time"
 )
 
 type FunctionStore struct {
@@ -29,6 +31,15 @@ type FunctionStore struct {
 func (fs *FunctionStore) Create(f *fission.Function) (string, error) {
 	code := []byte(f.Code)
 	_, uid, err := fs.ResourceStore.writeFile(f.Key(), code)
+	if err != nil {
+		return "", err
+	}
+
+	_, err = fs.ResourceStore.writeVersion(f.Key(), &fission.Version{
+		Name: uuid.NewV4().String(),
+		Timestamp: fission.Timestamp{ Time: time.Now()},
+		Uid: uid,
+	})
 	if err != nil {
 		return "", err
 	}
@@ -74,6 +85,15 @@ func (fs *FunctionStore) Update(f *fission.Function) (string, error) {
 		return "", err
 	}
 
+	_, err = fs.ResourceStore.writeVersion(f.Key(), &fission.Version{
+		Name: uuid.NewV4().String(),
+		Timestamp: fission.Timestamp{ Time: time.Now()},
+		Uid: uid,
+	})
+	if err != nil {
+		return "", err
+	}
+
 	var fnew fission.Function
 	err = fs.ResourceStore.read(f.Metadata.Name, &fnew)
 	if err != nil {
@@ -98,8 +118,16 @@ func (fs *FunctionStore) Delete(m fission.Metadata) error {
 		if err != nil {
 			return err
 		}
+		err = fs.ResourceStore.deleteAllVersions(m.Name)
+		if err != nil {
+			return err
+		}
 	} else {
 		err := fs.ResourceStore.deleteFile(m.Name, m.Uid)
+		if err != nil {
+			return err
+		}
+		err = fs.ResourceStore.deleteVersion(m.Name, m.Uid)
 		if err != nil {
 			return err
 		}
@@ -134,4 +162,26 @@ func (fs *FunctionStore) List() ([]fission.Function, error) {
 	}
 
 	return functions, nil
+}
+
+func (fs *FunctionStore) ListVersions(m fission.Metadata) ([]fission.Version, error) {
+	key := "version/" + m.Name
+
+	bufs, err := fs.ResourceStore.getAll(key)
+	if err != nil {
+		return nil, err
+	}
+
+	js := JsonSerializer{}
+	versions := make([]fission.Version, 0, len(bufs))
+	for _, buf := range bufs {
+		var v fission.Version
+		err = js.deserialize([]byte(buf), &v)
+		if err != nil {
+			return nil, err
+		}
+		versions = append(versions, v)
+	}
+
+	return versions, nil
 }

@@ -276,3 +276,25 @@ func fnEdit(c *cli.Context) error {
 	fmt.Printf("function %v updated, new uuid: %v\n", newfn.Name, newfn.Uid)
 	return nil
 }
+
+func fnListVersions(c *cli.Context) error {
+	client := getClient(c.GlobalString("server"))
+	fnName := c.String("name")
+	if len(fnName) == 0 {
+		fatal("Need name of function, use --name")
+	}
+
+	versions, err := client.FunctionListVersions(&fission.Metadata{Name: fnName})
+	checkErr(err, "list function versions")
+
+	w := tabwriter.NewWriter(os.Stdout, 0, 0, 1, ' ', 0)
+
+	fmt.Fprintf(w, "%v\t%v\n", "UID", "TIME")
+	for _, v := range versions {
+		fmt.Fprintf(w, "%v\t%v\n",
+			v.Uid, v.Timestamp.String())
+	}
+	w.Flush()
+
+	return err
+}

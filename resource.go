@@ -31,3 +31,7 @@ func (ht HTTPTrigger) Key() string {
 func (w Watch) Key() string {
 	return w.Metadata.Name
 }
+
+func (v Version) Key() string {
+	return v.Name
+}
