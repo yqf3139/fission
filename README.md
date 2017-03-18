@@ -182,6 +182,22 @@ Finally, you're ready to use Fission!
   Hello, world!
 ```
 
+### Use the web-based Fission-ui
+
+[Fission-ui](https://github.com/fission/fission-ui) is the ui for fission maintained by the community.
+It allows users to observe and manage fission. It also provides a simple online development environment for serverless functions.
+
+To setup Fission-ui with fission in k8s is simple:
+
+```bash
+  # After Fission deployed
+  $ kubectl create -f https://raw.githubusercontent.com/fission/fission-ui/master/docker/fission-ui.yaml
+```
+
+Then open `http://node-ip:31319` to use Fission-ui.
+
+For more infomation, please check out [Fission-ui Readme](https://github.com/fission/fission-ui/blob/master/README.md).
+
 Compiling Fission
 =================
 
