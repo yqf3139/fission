@@ -215,7 +215,6 @@ func (fh *functionHandler) handler(responseWriter http.ResponseWriter, request *
 		metricPath, metricStatus, request.Method, float64(latency.Nanoseconds())/10e9)
 	observeHttpCallResponseSize(metricCached, fh.Function.Name, fh.Function.Uid,
 		metricPath, metricStatus, request.Method, float64(wrapper.ResponseSize()))
-	proxy.ServeHTTP(responseWriter, request)
 	traceProxy.Finish()
 
 	traceHandler.LogFields(tracelog.String("msg", "A Function call finished"))
