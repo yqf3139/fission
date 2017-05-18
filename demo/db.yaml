@@ -1,0 +1,32 @@
+apiVersion: extensions/v1beta1
+kind: Deployment
+metadata:
+  name: db
+  namespace: fission
+spec:
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        svc: db
+    spec:
+      containers:
+      - name: db
+        image: yqf3139/dbdemo
+        command: ["/demo"]
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: db
+  namespace: fission
+  labels:
+    svc: db
+spec:
+  ports:
+  - port: 80
+    targetPort: 8080
+  selector:
+    svc: db
+

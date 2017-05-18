@@ -45,13 +45,13 @@ import (
 	"net/http"
 	"os"
 	"time"
-
 	"github.com/gorilla/handlers"
 	"github.com/gorilla/mux"
-
+	zipkin "github.com/openzipkin/zipkin-go-opentracing"
 	controllerClient "github.com/fission/fission/controller/client"
 	poolmgrClient "github.com/fission/fission/poolmgr/client"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
+	"github.com/opentracing/opentracing-go"
 )
 
 // request url ---[mux]---> Function(name,uid) ----[fmap]----> k8s service url
@@ -77,6 +77,14 @@ func serveMetric() {
 	log.Fatal(http.ListenAndServe(metricAddr, nil))
 }
 
+func initTracing(svcName string, port int) {
+	collector, _ := zipkin.NewHTTPCollector(
+		fmt.Sprintf("http://%s:9411/api/v1/spans", "zipkin.fission"))
+	tracer, _ := zipkin.NewTracer(
+		zipkin.NewRecorder(collector, false, fmt.Sprintf("%v.fission:%v", svcName, port), svcName))
+	opentracing.SetGlobalTracer(tracer)
+}
+
 func Start(port int, controllerUrl string, poolmgrUrl string) {
 	routerCacheTimeout := 10 * time.Second
 	fmap := makeFunctionServiceMap(routerCacheTimeout)
@@ -84,6 +92,7 @@ func Start(port int, controllerUrl string, poolmgrUrl string) {
 	poolmgr := poolmgrClient.MakeClient(poolmgrUrl)
 
 	go serveMetric()
+	initTracing("router", port)
 
 	triggers := makeHTTPTriggerSet(fmap, controller, poolmgr)
 	log.Printf("Starting router at port %v\n", port)

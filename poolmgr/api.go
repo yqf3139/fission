@@ -32,6 +32,7 @@ import (
 	"github.com/fission/fission"
 	"github.com/fission/fission/cache"
 	controllerclient "github.com/fission/fission/controller/client"
+	"github.com/opentracing/opentracing-go"
 )
 
 type API struct {
@@ -55,7 +56,23 @@ func MakeAPI(gpm *GenericPoolManager, controller *controllerclient.Client, fsCac
 	}
 }
 
+func startTracingFromHttpHeader(opName string, r *http.Request) opentracing.Span {
+	var sp opentracing.Span
+	wireContext, err := opentracing.GlobalTracer().Extract(
+		opentracing.TextMap,
+		opentracing.HTTPHeadersCarrier(r.Header))
+	if err != nil {
+		// If for whatever reason we can't join, go ahead an start a new root span.
+		sp = opentracing.StartSpan(opName)
+	} else {
+		sp = opentracing.StartSpan(opName, opentracing.ChildOf(wireContext))
+	}
+	return sp
+}
+
 func (api *API) getServiceForFunctionApi(w http.ResponseWriter, r *http.Request) {
+	sp := startTracingFromHttpHeader("poolmgr::GetServiceForFunctionApi", r)
+	defer sp.Finish()
 	body, err := ioutil.ReadAll(r.Body)
 	if err != nil {
 		http.Error(w, "Failed to read request", 500)
@@ -70,7 +87,7 @@ func (api *API) getServiceForFunctionApi(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
-	serviceName, err := api.getServiceForFunction(&m)
+	serviceName, err := api.getServiceForFunction(&m, sp)
 	if err != nil {
 		code, msg := fission.GetHTTPError(err)
 		log.Printf("Error: %v: %v", code, msg)
@@ -109,7 +126,7 @@ func (api *API) getFunctionInfo(m *fission.Metadata) (*fission.Environment, *fis
 	return env, fnc, nil
 }
 
-func (api *API) getServiceForFunction(m *fission.Metadata) (string, error) {
+func (api *API) getServiceForFunction(m *fission.Metadata, parent opentracing.Span) (string, error) {
 	// Make sure we have the full metadata.  This ensures that
 	// poolmgr does not implicitly interpret empty-UID as latest
 	// version.
@@ -126,19 +143,29 @@ func (api *API) getServiceForFunction(m *fission.Metadata) (string, error) {
 		return fsvc.getAddress(), nil
 	}
 
+	traceCreateNewFuncSvc := opentracing.StartSpan("poolmgr::CreateNewFuncSvc",
+		opentracing.ChildOf(parent.Context()))
+	defer traceCreateNewFuncSvc.Finish()
+
 	// None exists, so create a new funcSvc:
 	log.Printf("[%v] No cached function service found, creating one", m.Name)
 
 	// from Func -> get Env
 	log.Printf("[%v] getting environment for function", m.Name)
+	traceGetFunctionEnv := opentracing.StartSpan("poolmgr::GetFunctionEnv",
+		opentracing.ChildOf(parent.Context()))
 	env, fnc, err := api.getFunctionInfo(m)
+	traceGetFunctionEnv.Finish()
 	if err != nil {
 		return "", err
 	}
 
 	// from Env -> get GenericPool
 	log.Printf("[%v] getting generic pool for env", m.Name)
+	traceGetGenericPool := opentracing.StartSpan("poolmgr::GetGenericPoll",
+		opentracing.ChildOf(parent.Context()))
 	pool, err := api.poolMgr.GetPool(env)
+	traceGetGenericPool.Finish()
 	if err != nil {
 		return "", err
 	}
@@ -146,7 +173,10 @@ func (api *API) getServiceForFunction(m *fission.Metadata) (string, error) {
 	// from GenericPool -> get one function container
 	// (this also adds to the cache)
 	log.Printf("[%v] getting function service from pool", m.Name)
+	traceGetFunctionContainer := opentracing.StartSpan("poolmgr::GetFunctionContainer",
+		opentracing.ChildOf(parent.Context()))
 	funcSvc, err := pool.GetFuncSvc(m, fnc, env)
+	traceGetFunctionContainer.Finish()
 	if err != nil {
 		return "", err
 	}
@@ -157,6 +187,9 @@ func (api *API) getServiceForFunction(m *fission.Metadata) (string, error) {
 
 // find funcSvc and update its atime
 func (api *API) tapService(w http.ResponseWriter, r *http.Request) {
+	sp := startTracingFromHttpHeader("poolmgr::TapService", r)
+	defer sp.Finish()
+
 	body, err := ioutil.ReadAll(r.Body)
 	if err != nil {
 		http.Error(w, "Failed to read request", 500)

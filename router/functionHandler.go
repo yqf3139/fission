@@ -18,14 +18,18 @@ package router
 
 import (
 	"fmt"
-	"github.com/fission/fission"
-	poolmgrClient "github.com/fission/fission/poolmgr/client"
 	"log"
 	"net"
 	"net/http"
 	"net/http/httputil"
 	"net/url"
 	"time"
+
+	"github.com/opentracing/opentracing-go"
+	tracelog "github.com/opentracing/opentracing-go/log"
+
+	"github.com/fission/fission"
+	poolmgrClient "github.com/fission/fission/poolmgr/client"
 )
 
 type functionHandler struct {
@@ -47,9 +51,9 @@ var funcTransport http.Transport = http.Transport{
 	ExpectContinueTimeout: 1 * time.Second,
 }
 
-func (fh *functionHandler) getServiceForFunction() (*url.URL, error) {
+func (fh *functionHandler) getServiceForFunction(span opentracing.Span) (*url.URL, error) {
 	// call poolmgr, get a url for a function
-	svcName, err := fh.poolmgr.GetServiceForFunction(&fh.Function)
+	svcName, err := fh.poolmgr.GetServiceForFunction(&fh.Function, span)
 	if err != nil {
 		return nil, err
 	}
@@ -94,11 +98,11 @@ func (rrt RetryingRoundTripper) RoundTrip(req *http.Request) (*http.Response, er
 	return http.DefaultTransport.RoundTrip(req)
 }
 
-func (fh *functionHandler) tapService(serviceUrl *url.URL) {
+func (fh *functionHandler) tapService(serviceUrl *url.URL, span opentracing.Span) {
 	if fh.poolmgr == nil {
 		return
 	}
-	err := fh.poolmgr.TapService(serviceUrl)
+	err := fh.poolmgr.TapService(serviceUrl, span)
 	if err != nil {
 		log.Printf("tap service error for %v: %v", serviceUrl.String(), err)
 	}
@@ -106,9 +110,12 @@ func (fh *functionHandler) tapService(serviceUrl *url.URL) {
 
 func (fh *functionHandler) handler(responseWriter http.ResponseWriter, request *http.Request) {
 	reqStartTime := time.Now()
+	traceHandler := opentracing.StartSpan("router::Handler")
+	defer traceHandler.Finish()
 
 	metricCached := "true"
 	metricPath := request.URL.Path
+	traceGetService := opentracing.StartSpan("router::GetService", opentracing.ChildOf(traceHandler.Context()))
 	// cache lookup
 	serviceUrl, err := fh.fmap.lookup(&fh.Function)
 	if err != nil {
@@ -116,11 +123,16 @@ func (fh *functionHandler) handler(responseWriter http.ResponseWriter, request *
 		log.Printf("Not cached, getting new service for %v", fh.Function)
 		metricCached = "false"
 
+		traceHandler.LogFields(tracelog.String("msg", "Service cache missed"))
+		traceGetService.SetTag("cold", true)
+
 		var poolErr error
-		serviceUrl, poolErr = fh.getServiceForFunction()
+		serviceUrl, poolErr = fh.getServiceForFunction(traceGetService)
 		if poolErr != nil {
 			log.Printf("Failed to get service for function (%v,%v): %v",
 				fh.Function.Name, fh.Function.Uid, poolErr)
+			traceGetService.LogFields(tracelog.String("msg", "Failed to get service for function"))
+			traceGetService.Finish()
 			// We might want a specific error code or header for fission
 			// failures as opposed to user function bugs.
 			http.Error(responseWriter, "Internal server error (fission)", 500)
@@ -133,8 +145,12 @@ func (fh *functionHandler) handler(responseWriter http.ResponseWriter, request *
 	} else {
 		// if we're using our cache, asynchronously tell
 		// poolmgr we're using this service
-		go fh.tapService(serviceUrl)
+		go fh.tapService(serviceUrl, traceGetService)
+		traceGetService.SetTag("cold", false)
 	}
+	traceGetService.Finish()
+
+	traceProxy := opentracing.StartSpan("router::Proxy", opentracing.ChildOf(traceHandler.Context()))
 
 	// Proxy off our request to the serviceUrl, and send the response back.
 	// TODO: As an optimization we may want to cache proxies too -- this might get us
@@ -157,6 +173,14 @@ func (fh *functionHandler) handler(responseWriter http.ResponseWriter, request *
 		if _, ok := req.Header["User-Agent"]; !ok {
 			// explicitly disable User-Agent so it's not set to default value
 			req.Header.Set("User-Agent", "")
+		}
+
+		// inject the open tracing header
+		err := traceProxy.Tracer().Inject(traceProxy.Context(),
+			opentracing.TextMap,
+			opentracing.HTTPHeadersCarrier(req.Header))
+		if err != nil {
+			log.Printf("Could not inject span context into header: %v", err)
 		}
 	}
 
@@ -191,4 +215,8 @@ func (fh *functionHandler) handler(responseWriter http.ResponseWriter, request *
 		metricPath, metricStatus, request.Method, float64(latency.Nanoseconds())/10e9)
 	observeHttpCallResponseSize(metricCached, fh.Function.Name, fh.Function.Uid,
 		metricPath, metricStatus, request.Method, float64(wrapper.ResponseSize()))
+	proxy.ServeHTTP(responseWriter, request)
+	traceProxy.Finish()
+
+	traceHandler.LogFields(tracelog.String("msg", "A Function call finished"))
 }
