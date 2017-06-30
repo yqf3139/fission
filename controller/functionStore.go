@@ -83,6 +83,10 @@ func (fs *FunctionStore) Update(f *fission.Function) (string, error) {
 
 	fnew.Metadata.Uid = uid
 	fnew.Environment = f.Environment
+	fnew.ServiceInstances = f.ServiceInstances
+	if fnew.ServiceInstances == nil {
+		fnew.ServiceInstances = make([]string, 0)
+	}
 
 	err = fs.ResourceStore.update(fnew)
 	if err != nil {

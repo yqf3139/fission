@@ -12,6 +12,7 @@ const morgan = require('morgan');
 const argv = require('minimist')(process.argv.slice(1));
 if (!argv.codepath) {
     argv.codepath = "/userfunc/user";
+    argv.serviceinstancepath = "/userfunc/service-instances.json";
     console.log("Codepath defaulting to ", argv.codepath);
 }
 if (!argv.port) {
@@ -31,6 +32,7 @@ fs.symlinkSync('/usr/src/app/node_modules', `${path.dirname(argv.codepath)}/node
 
 // User function.  Starts out undefined.
 let userFunction;
+let serviceInstances = {};
 
 //
 // Specialize this server to a given user function.  The user function
@@ -38,6 +40,7 @@ let userFunction;
 // fission runtime.
 //
 function specialize(req, res) {
+    console.log('specialize');
     // Make sure we're a generic container.  (No reuse of containers.
     // Once specialized, the container remains specialized.)
     if (userFunction) {
@@ -55,6 +58,13 @@ function specialize(req, res) {
         console.error(`user code load error: ${e}`);
         res.status(500).send(JSON.stringify(e));
         return;
+    }
+    // Read and load the service-instances.json.
+    try {
+        serviceInstances = JSON.parse(fs.readFileSync(argv.serviceinstancepath, 'utf8'));
+        console.log('service instances loaded');
+    } catch(e) {
+        console.error(`service instances load error: ${e}`);
     }
     res.status(202).send();
 }
@@ -78,7 +88,10 @@ app.all('/', function (req, res) {
 
     const context = {
         request: req,
-        response: res
+        response: res,
+        fission: {
+            serviceInstances: serviceInstances,
+        },
         // TODO: context should also have: URL template params, query string
     };
 

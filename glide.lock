@@ -1,5 +1,5 @@
-hash: d6acf582b3978ef5dc4eb3cccccfd8838ddd46bd39bd0bd266ca0c60dc0b5697
-updated: 2017-07-07T21:47:47.968409578+08:00
+hash: 3f31281c4083154006c723f2b1b2eb86f47d09146ec0c3aab86ff591c536760a
+updated: 2017-07-07T21:52:20.359685181+08:00
 imports:
 - name: github.com/coreos/etcd
   version: 36c655f29b9fef15c4094093c7407967c5c5bb96
@@ -66,6 +66,14 @@ imports:
   - pkg/escape
 - name: github.com/juju/ratelimit
   version: 77ed1c8a01217656d2080ad51981f6e99adaa177
+- name: github.com/kubernetes-incubator/service-catalog
+  version: 39c7407cdda790d9c0d21aecd1b76ff65fc8db97
+  subpackages:
+  - pkg/apis/servicecatalog
+  - pkg/apis/servicecatalog/v1alpha1
+  - pkg/client/clientset_generated/clientset
+  - pkg/client/clientset_generated/clientset/scheme
+  - pkg/client/clientset_generated/clientset/typed/servicecatalog/v1alpha1
 - name: github.com/mailru/easyjson
   version: d5b7844b561a7bc640052f1b935f7b800330d7e0
   subpackages:

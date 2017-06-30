@@ -83,12 +83,19 @@ func fnCreate(c *cli.Context) error {
 		}
 	}
 
+	serviceInstancesStr := c.String("service-instances")
+	serviceInstances := make([]string, 0)
+	if len(serviceInstancesStr) > 0 {
+		serviceInstances = strings.Split(serviceInstancesStr, ",")
+	}
+
 	code := fnFetchCode(fileName)
 
 	function := &fission.Function{
-		Metadata:    fission.Metadata{Name: fnName},
-		Environment: fission.Metadata{Name: envName},
-		Code:        string(code),
+		Metadata:         fission.Metadata{Name: fnName},
+		Environment:      fission.Metadata{Name: envName},
+		Code:             string(code),
+		ServiceInstances: serviceInstances,
 	}
 
 	_, err := client.FunctionCreate(function)
@@ -155,9 +162,8 @@ func fnGetMeta(c *cli.Context) error {
 	checkErr(err, "get function")
 
 	w := tabwriter.NewWriter(os.Stdout, 0, 0, 1, ' ', 0)
-	fmt.Fprintf(w, "%v\t%v\t%v\n", "NAME", "UID", "ENV")
-	fmt.Fprintf(w, "%v\t%v\t%v\n",
-		f.Metadata.Name, f.Metadata.Uid, f.Environment.Name)
+	fmt.Fprintf(w, "%v\t%v\t%v\t%v\n",
+		f.Metadata.Name, f.Metadata.Uid, f.Environment.Name, strings.Join(f.ServiceInstances, ","))
 	w.Flush()
 	return err
 }
@@ -225,10 +231,10 @@ func fnList(c *cli.Context) error {
 
 	w := tabwriter.NewWriter(os.Stdout, 0, 0, 1, ' ', 0)
 
-	fmt.Fprintf(w, "%v\t%v\t%v\n", "NAME", "UID", "ENV")
+	fmt.Fprintf(w, "%v\t%v\t%v\t%v\n", "NAME", "UID", "ENV", "SVC-INSTANCES")
 	for _, f := range fns {
-		fmt.Fprintf(w, "%v\t%v\t%v\n",
-			f.Metadata.Name, f.Metadata.Uid, f.Environment.Name)
+		fmt.Fprintf(w, "%v\t%v\t%v\t%v\n",
+			f.Metadata.Name, f.Metadata.Uid, f.Environment.Name, strings.Join(f.ServiceInstances, ","))
 	}
 	w.Flush()
 

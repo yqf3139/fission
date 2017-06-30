@@ -38,5 +38,7 @@ import:
   version: ^v0.3.4
 - package: github.com/nats-io/nats-streaming-server
   version: ^v0.4.0
+- package: github.com/kubernetes-incubator/service-catalog
+  version: v0.0.12
 - package: golang.org/x/text
   version: 6353ef0f924300eea566d3438817aa4d3374817e

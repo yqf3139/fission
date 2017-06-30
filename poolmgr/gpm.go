@@ -20,6 +20,7 @@ import (
 	"log"
 	"time"
 
+	catalogclientset "github.com/kubernetes-incubator/service-catalog/pkg/client/clientset_generated/clientset"
 	"k8s.io/client-go/kubernetes"
 
 	"github.com/fission/fission"
@@ -37,6 +38,7 @@ type (
 	GenericPoolManager struct {
 		pools            map[fission.Environment]*GenericPool
 		kubernetesClient *kubernetes.Clientset
+		catalogClient    *catalogclientset.Clientset
 		namespace        string
 		controllerUrl    string
 		controllerClient *client.Client
@@ -59,6 +61,7 @@ type (
 func MakeGenericPoolManager(
 	controllerUrl string,
 	kubernetesClient *kubernetes.Clientset,
+	catalogClient *catalogclientset.Clientset,
 	namespace string,
 	fsCache *functionServiceCache,
 	instanceId string) *GenericPoolManager {
@@ -66,6 +69,7 @@ func MakeGenericPoolManager(
 	gpm := &GenericPoolManager{
 		pools:            make(map[fission.Environment]*GenericPool),
 		kubernetesClient: kubernetesClient,
+		catalogClient:    catalogClient,
 		namespace:        namespace,
 		controllerUrl:    controllerUrl,
 		controllerClient: client.MakeClient(controllerUrl),
@@ -88,8 +92,8 @@ func (gpm *GenericPoolManager) service() {
 			pool, ok := gpm.pools[*req.env]
 			if !ok {
 				pool, err = MakeGenericPool(
-					gpm.controllerUrl, gpm.kubernetesClient, req.env,
-					3, // TODO configurable/autoscalable
+					gpm.controllerUrl, gpm.kubernetesClient, gpm.catalogClient, req.env,
+					1, // TODO configurable/autoscalable
 					gpm.namespace, gpm.fsCache, gpm.instanceId)
 				if err != nil {
 					req.responseChannel <- &response{error: err}

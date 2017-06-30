@@ -21,10 +21,10 @@ import (
 	"strings"
 
 	"github.com/dchest/uniuri"
+	controllerclient "github.com/fission/fission/controller/client"
+	catalogclientset "github.com/kubernetes-incubator/service-catalog/pkg/client/clientset_generated/clientset"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
-
-	controllerclient "github.com/fission/fission/controller/client"
 )
 
 // Get a kubernetes client using the pod's service account.  This only
@@ -47,6 +47,22 @@ func getKubernetesClient() (*kubernetes.Clientset, error) {
 	return clientset, nil
 }
 
+// Get a service catalog client
+func getServiceCatalogClient() (*catalogclientset.Clientset, error) {
+	config := &rest.Config{
+		Host: "http://catalog-catalog-apiserver.catalog",
+	}
+
+	// creates the clientset
+	clientset, err := catalogclientset.NewForConfig(config)
+	if err != nil {
+		log.Printf("Error getting service catalog client: %v", err)
+		return nil, err
+	}
+
+	return clientset, nil
+}
+
 func StartPoolmgr(controllerUrl string, namespace string, port int) error {
 	controllerUrl = strings.TrimSuffix(controllerUrl, "/")
 	controllerClient := controllerclient.MakeClient(controllerUrl)
@@ -57,11 +73,17 @@ func StartPoolmgr(controllerUrl string, namespace string, port int) error {
 		return err
 	}
 
+	catalogClient, err := getServiceCatalogClient()
+	if err != nil {
+		log.Printf("Failed to get service catalog client: %v", err)
+		return err
+	}
+
 	instanceId := uniuri.NewLen(8)
 	cleanupOldPoolmgrResources(kubernetesClient, namespace, instanceId)
 
 	fsCache := MakeFunctionServiceCache()
-	gpm := MakeGenericPoolManager(controllerUrl, kubernetesClient, namespace, fsCache, instanceId)
+	gpm := MakeGenericPoolManager(controllerUrl, kubernetesClient, catalogClient, namespace, fsCache, instanceId)
 
 	api := MakeAPI(gpm, controllerClient, fsCache)
 	go api.Serve(port)

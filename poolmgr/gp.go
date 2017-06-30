@@ -30,12 +30,13 @@ import (
 	"time"
 
 	"github.com/dchest/uniuri"
-	"k8s.io/client-go/kubernetes"
-	"k8s.io/client-go/pkg/api/v1"
-	"k8s.io/client-go/pkg/apis/extensions/v1beta1"
+	catalogclientset "github.com/kubernetes-incubator/service-catalog/pkg/client/clientset_generated/clientset"
 	meta_v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/util/intstr"
+	"k8s.io/client-go/kubernetes"
+	"k8s.io/client-go/pkg/api/v1"
+	"k8s.io/client-go/pkg/apis/extensions/v1beta1"
 
 	"github.com/fission/fission"
 	"github.com/fission/fission/logger"
@@ -57,6 +58,7 @@ type (
 		useSvc           bool                  // create k8s service for specialized pods
 		poolInstanceId   string                // small random string to uniquify pod names
 		kubernetesClient *kubernetes.Clientset
+		catalogClient    *catalogclientset.Clientset
 		instanceId       string // poolmgr instance id
 		labelsForPool    map[string]string
 		requestChannel   chan *choosePodRequest
@@ -76,6 +78,7 @@ type (
 func MakeGenericPool(
 	controllerUrl string,
 	kubernetesClient *kubernetes.Clientset,
+	catalogClient *catalogclientset.Clientset,
 	env *fission.Environment,
 	initialReplicas int32,
 	namespace string,
@@ -90,6 +93,7 @@ func MakeGenericPool(
 		replicas:         initialReplicas, // TODO make this an env param instead?
 		requestChannel:   make(chan *choosePodRequest),
 		kubernetesClient: kubernetesClient,
+		catalogClient:    catalogClient,
 		namespace:        namespace,
 		podReadyTimeout:  5 * time.Minute, // TODO make this an env param?
 		controllerUrl:    controllerUrl,
@@ -240,10 +244,70 @@ func (gp *GenericPool) scheduleDeletePod(name string) {
 	}()
 }
 
+func (gp *GenericPool) getFetcherRequestBody(metadata *fission.Metadata, f *fission.Function) ([]byte, error) {
+	functionUrl := fmt.Sprintf("%v/v1/functions/%v?uid=%v&raw=1",
+		gp.controllerUrl, metadata.Name, metadata.Uid)
+
+	instancesMap := make(map[string]fission.ServiceInstance)
+	for _, name := range f.ServiceInstances {
+		if _, found := instancesMap[name]; found {
+			continue
+		}
+
+		ins := fission.ServiceInstance{Name: name}
+		instance, err := gp.catalogClient.Instances("fission").Get(name, meta_v1.GetOptions{})
+		if err != nil {
+			ins.ErrorMessage = err.Error()
+			instancesMap[name] = ins
+			continue
+		}
+		ins.ServiceClass = instance.Spec.ServiceClassName
+		// TODO check if the instance status is ready
+		// check if the instance has a binding
+		bindings, err := gp.catalogClient.Bindings("fission").List(meta_v1.ListOptions{})
+		if err != nil {
+			ins.ErrorMessage = err.Error()
+			instancesMap[name] = ins
+			continue
+		}
+		found := false
+		for _, binding := range bindings.Items {
+			if binding.Spec.InstanceRef.Name != name {
+				continue
+			}
+			// get secret
+			secret, err := gp.kubernetesClient.CoreV1().Secrets("fission").Get(
+				binding.Spec.SecretName, meta_v1.GetOptions{})
+			if err != nil {
+				ins.ErrorMessage = err.Error()
+				break
+			}
+			credentials := make(map[string]string)
+			for k, v := range secret.Data {
+				credentials[k] = string(v)
+			}
+			ins.Credentials = credentials
+			found = true
+			break
+		}
+		if !found && ins.ErrorMessage == "" {
+			ins.ErrorMessage = "binding not found"
+		}
+		instancesMap[name] = ins
+	}
+
+	fetcherRequest := fission.FetchRequest{
+		Url:               functionUrl,
+		Filename:          "user",
+		ServicesInstances: instancesMap,
+	}
+	return json.Marshal(fetcherRequest)
+}
+
 // specializePod chooses a pod, copies the required user-defined function to that pod
 // (via fetcher), and calls the function-run container to load it, resulting in a
 // specialized pod.
-func (gp *GenericPool) specializePod(pod *v1.Pod, metadata *fission.Metadata) error {
+func (gp *GenericPool) specializePod(pod *v1.Pod, metadata *fission.Metadata, f *fission.Function) error {
 	// for fetcher we don't need to create a service, just talk to the pod directly
 	podIP := pod.Status.PodIP
 	if len(podIP) == 0 {
@@ -252,12 +316,13 @@ func (gp *GenericPool) specializePod(pod *v1.Pod, metadata *fission.Metadata) er
 
 	// tell fetcher to get the function.
 	fetcherUrl := fmt.Sprintf("http://%v:8000/", podIP)
-	functionUrl := fmt.Sprintf("%v/v1/functions/%v?uid=%v&raw=1",
-		gp.controllerUrl, metadata.Name, metadata.Uid)
-	fetcherRequest := fmt.Sprintf("{\"url\": \"%v\", \"filename\": \"user\"}", functionUrl)
+	fetcherReqBody, err := gp.getFetcherRequestBody(metadata, f)
+	if err != nil {
+		return err
+	}
 
 	log.Printf("[%v] calling fetcher to copy function", metadata)
-	resp, err := http.Post(fetcherUrl, "application/json", bytes.NewReader([]byte(fetcherRequest)))
+	resp, err := http.Post(fetcherUrl, "application/json", bytes.NewReader(fetcherReqBody))
 	if err != nil {
 		// TODO we should retry this call in case fetcher hasn't come up yet
 		return err
@@ -352,7 +417,7 @@ func (gp *GenericPool) createPool() error {
 						},
 						{
 							Name:                   "fetcher",
-							Image:                  "fission/fetcher",
+							Image:                  "yqf3139/fetcher",
 							ImagePullPolicy:        v1.PullIfNotPresent,
 							TerminationMessagePath: "/dev/termination-log",
 							VolumeMounts: []v1.VolumeMount{
@@ -419,7 +484,7 @@ func (gp *GenericPool) createSvc(name string, labels map[string]string) (*v1.Ser
 	return svc, err
 }
 
-func (gp *GenericPool) GetFuncSvc(m *fission.Metadata) (*funcSvc, error) {
+func (gp *GenericPool) GetFuncSvc(m *fission.Metadata, f *fission.Function) (*funcSvc, error) {
 
 	log.Printf("[%v] Choosing pod from pool", m)
 	newLabels := gp.labelsForFunction(m)
@@ -428,7 +493,7 @@ func (gp *GenericPool) GetFuncSvc(m *fission.Metadata) (*funcSvc, error) {
 		return nil, err
 	}
 
-	err = gp.specializePod(pod, m)
+	err = gp.specializePod(pod, m, f)
 	if err != nil {
 		gp.scheduleDeletePod(pod.ObjectMeta.Name)
 		return nil, err

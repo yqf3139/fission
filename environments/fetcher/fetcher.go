@@ -8,12 +8,9 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
-)
 
-type FetchRequest struct {
-	Url      string `json:"url"`
-	Filename string `json:"filename"`
-}
+	"github.com/fission/fission"
+)
 
 type Fetcher struct {
 	sharedVolumePath string
@@ -36,7 +33,7 @@ func (fetcher *Fetcher) handler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), 500)
 		return
 	}
-	var req FetchRequest
+	var req fission.FetchRequest
 	err = json.Unmarshal(body, &req)
 	if err != nil {
 		log.Printf("Error reading request body: %v", err)
@@ -81,6 +78,25 @@ func (fetcher *Fetcher) handler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, e, 500)
 		return
 	}
+
+	// save the service instances into file
+	body, err = json.Marshal(req.ServicesInstances)
+	if err != nil {
+		e := fmt.Sprintf("Failed to marshal instances: %v", err)
+		log.Printf(e)
+		http.Error(w, e, 500)
+		return
+	}
+
+	instancesFilepath := filepath.Join(fetcher.sharedVolumePath, "service-instances.json")
+	err = ioutil.WriteFile(instancesFilepath, body, 0600)
+	if err != nil {
+		e := fmt.Sprintf("Failed to write file: %v", err)
+		log.Printf(e)
+		http.Error(w, e, 500)
+		return
+	}
+	log.Printf("service-instances.json: %v", string(body))
 
 	// all done
 	w.WriteHeader(http.StatusOK)

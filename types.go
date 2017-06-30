@@ -28,9 +28,10 @@ type (
 	// a function, the code may have more than one function; it's
 	// usually some sort of module or package.
 	Function struct {
-		Metadata    `json:"metadata"`
-		Environment Metadata `json:"environment"`
-		Code        string   `json:"code"`
+		Metadata         `json:"metadata"`
+		Environment      Metadata `json:"environment"`
+		Code             string   `json:"code"`
+		ServiceInstances []string `json:"serviceInstances"`
 	}
 
 	// Environment identifies the language and OS specific
@@ -89,6 +90,19 @@ type (
 	Error struct {
 		Code    errorCode `json:"code"`
 		Message string    `json:"message"`
+	}
+
+	FetchRequest struct {
+		Url               string                     `json:"url"`
+		Filename          string                     `json:"filename"`
+		ServicesInstances map[string]ServiceInstance `json:"serviceinstances"`
+	}
+
+	ServiceInstance struct {
+		Name         string            `json:"name"`
+		ServiceClass string            `json:"serviceclass"`
+		Credentials  map[string]string `json:"credentials"`
+		ErrorMessage string            `json:"errormessage"`
 	}
 
 	errorCode int

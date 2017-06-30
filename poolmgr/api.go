@@ -230,10 +230,16 @@ func (api *API) createServiceForFunction(m *fission.Metadata) (string, error) {
 		return "", err
 	}
 
+	log.Printf("[%v] getting function from controller", m)
+	f, err := api.controller.FunctionGet(m)
+	if err != nil {
+		return "", err
+	}
+
 	// from GenericPool -> get one function container
 	// (this also adds to the cache)
 	log.Printf("[%v] getting function service from pool", m.Name)
-	fsvc, err := pool.GetFuncSvc(m)
+	fsvc, err := pool.GetFuncSvc(m, f)
 	if err != nil {
 		return "", err
 	}
