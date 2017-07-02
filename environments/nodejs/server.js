@@ -33,6 +33,7 @@ fs.symlinkSync('/usr/src/app/node_modules', `${path.dirname(argv.codepath)}/node
 // User function.  Starts out undefined.
 let userFunction;
 let serviceInstances = {};
+let serviceClientPools = {};
 
 //
 // Specialize this server to a given user function.  The user function
@@ -66,18 +67,80 @@ function specialize(req, res) {
     } catch(e) {
         console.error(`service instances load error: ${e}`);
     }
+    // Create service instances clients pool
+    if(Object.keys(serviceInstances).length > 0) {
+        const toClientPool = require('./service-catalog-clients');
+        serviceClientPools = Object.keys(serviceInstances).map((k) => {
+            return toClientPool(serviceInstances[k]);
+        }).reduce((obj, cur) => {
+            obj[cur.name] = cur;
+            return obj;
+        }, {});
+    }
     res.status(202).send();
 }
 
+function getClients(req, res, next) {
+    if (!userFunction) {
+        next();
+        return;
+    }
+    const len = Object.keys(serviceClientPools).length;
+    if(len === 0) {
+        next();
+        return;
+    }
+
+    let finish = 0;
+    const serviceClients = {};
+    req._serviceClients = serviceClients;
+    // release all the service clients
+    Object.keys(serviceClientPools).map((k) => {
+        const p = serviceClientPools[k];
+        if(!p) return;
+
+        console.log('getting', k);
+        p.get(function (err, client) {
+            if(err) {
+                console.error('Get service instance client: ', err);
+            } else {
+                serviceClients[k] = client;
+            }
+            finish += 1;
+            if(finish === len) {
+                next();
+            }
+        });
+    });
+}
+
+function releaseClients(req, res, next) {
+    if (!userFunction) {
+        next();
+        return;
+    }
+    // release all the service clients
+    Object.keys(serviceClientPools).map((k) => {
+        const p = serviceClientPools[k];
+        const c = req._serviceClients[k];
+        if(!p || !c) return;
+
+        p.release(c);
+    });
+    next();
+}
 
 // Request logger
-app.use(morgan('combined'))
+app.use(morgan('combined'));
 
 app.use(bodyParser.urlencoded({ extended: false }));
 app.use(bodyParser.json());
 app.use(bodyParser.raw());
 
+
 app.post('/specialize', specialize);
+
+app.use(getClients);
 
 // Generic route -- all http requests go to the user function.
 app.all('/', function (req, res) {
@@ -91,6 +154,8 @@ app.all('/', function (req, res) {
         response: res,
         fission: {
             serviceInstances: serviceInstances,
+            serviceClientPools: serviceClientPools,
+            serviceClients: req._serviceClients
         },
         // TODO: context should also have: URL template params, query string
     };
@@ -132,5 +197,7 @@ app.all('/', function (req, res) {
     }
 
 });
+
+app.use(releaseClients);
 
 app.listen(argv.port);
