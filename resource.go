@@ -39,3 +39,7 @@ func (tt TimeTrigger) Key() string {
 func (w Watch) Key() string {
 	return w.Metadata.Name
 }
+
+func (sa ServiceAdapter) Key() string {
+	return sa.Metadata.Name
+}

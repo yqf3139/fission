@@ -42,3 +42,9 @@ import:
   version: v0.0.12
 - package: golang.org/x/text
   version: 6353ef0f924300eea566d3438817aa4d3374817e
+- package: github.com/jmoiron/jsonq
+- package: github.com/minio/minio-go
+  version: v3.0.0
+- package: github.com/minio/go-homedir
+- package: github.com/go-ini/ini
+  version: v1.28.0

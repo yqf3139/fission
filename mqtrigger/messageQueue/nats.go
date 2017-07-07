@@ -98,6 +98,7 @@ func msgHandler(nats *Nats, trigger fission.MessageQueueTrigger) func(*ns.Msg) {
 		headers := map[string]string{
 			"X-Fission-MQTrigger-Topic":     trigger.Topic,
 			"X-Fission-MQTrigger-RespTopic": trigger.ResponseTopic,
+			"Content-Type": "application/json",
 		}
 
 		// Create request

@@ -39,6 +39,7 @@ type (
 		MessageQueueTriggerStore
 		EnvironmentStore
 		WatchStore
+		ServiceAdapterStore
 	}
 
 	logDBConfig struct {
@@ -56,6 +57,7 @@ func MakeAPI(rs *ResourceStore) *API {
 		MessageQueueTriggerStore: MessageQueueTriggerStore{ResourceStore: *rs},
 		EnvironmentStore:         EnvironmentStore{ResourceStore: *rs},
 		WatchStore:               WatchStore{ResourceStore: *rs},
+		ServiceAdapterStore:      ServiceAdapterStore{ResourceStore: *rs},
 	}
 	return api
 }
@@ -137,6 +139,12 @@ func (api *API) Serve(port int) {
 	r.HandleFunc("/v1/triggers/messagequeue/{mqTrigger}", api.MessageQueueApiGet).Methods("GET")
 	r.HandleFunc("/v1/triggers/messagequeue/{mqTrigger}", api.MessageQueueApiUpdate).Methods("PUT")
 	r.HandleFunc("/v1/triggers/messagequeue/{mqTrigger}", api.MessageQueueApiDelete).Methods("DELETE")
+
+	r.HandleFunc("/v1/service-adapters", api.ServiceAdapterApiList).Methods("GET")
+	r.HandleFunc("/v1/service-adapters", api.ServiceAdapterApiCreate).Methods("POST")
+	r.HandleFunc("/v1/service-adapters/{adapter}", api.ServiceAdapterApiGet).Methods("GET")
+	r.HandleFunc("/v1/service-adapters/{adapter}", api.ServiceAdapterApiUpdate).Methods("PUT")
+	r.HandleFunc("/v1/service-adapters/{adapter}", api.ServiceAdapterApiDelete).Methods("DELETE")
 
 	r.HandleFunc("/proxy/{dbType}", api.FunctionLogsApiPost).Methods("POST")
 

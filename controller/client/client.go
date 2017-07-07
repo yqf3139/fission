@@ -753,3 +753,113 @@ func (c *Client) MessageQueueTriggerList(mqType string) ([]fission.MessageQueueT
 
 	return triggers, nil
 }
+
+func (c *Client) ServiceAdapterCreate(t *fission.ServiceAdapter) (*fission.Metadata, error) {
+	reqbody, err := json.Marshal(t)
+	if err != nil {
+		return nil, err
+	}
+
+	resp, err := http.Post(c.url("service-adapters"), "application/json", bytes.NewReader(reqbody))
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	body, err := c.handleCreateResponse(resp)
+	if err != nil {
+		return nil, err
+	}
+
+	var m fission.Metadata
+	err = json.Unmarshal(body, &m)
+	if err != nil {
+		return nil, err
+	}
+
+	return &m, nil
+}
+
+func (c *Client) ServiceAdapterGet(m *fission.Metadata) (*fission.ServiceAdapter, error) {
+	relativeUrl := fmt.Sprintf("service-adapters/%v", m.Name)
+	if len(m.Uid) > 0 {
+		relativeUrl += fmt.Sprintf("?uid=%v", m.Uid)
+	}
+
+	resp, err := http.Get(c.url(relativeUrl))
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	body, err := c.handleResponse(resp)
+	if err != nil {
+		return nil, err
+	}
+
+	var t fission.ServiceAdapter
+	err = json.Unmarshal(body, &t)
+	if err != nil {
+		return nil, err
+	}
+
+	return &t, nil
+}
+
+func (c *Client) ServiceAdapterUpdate(mqTrigger *fission.ServiceAdapter) (*fission.Metadata, error) {
+	reqbody, err := json.Marshal(mqTrigger)
+	if err != nil {
+		return nil, err
+	}
+	relativeUrl := fmt.Sprintf("service-adapters/%v", mqTrigger.Metadata.Name)
+
+	resp, err := c.put(relativeUrl, "application/json", reqbody)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	body, err := c.handleResponse(resp)
+	if err != nil {
+		return nil, err
+	}
+
+	var m fission.Metadata
+	err = json.Unmarshal(body, &m)
+	if err != nil {
+		return nil, err
+	}
+	return &m, nil
+}
+
+func (c *Client) ServiceAdapterDelete(m *fission.Metadata) error {
+	relativeUrl := fmt.Sprintf("service-adapters/%v", m.Name)
+	if len(m.Uid) > 0 {
+		relativeUrl += fmt.Sprintf("?uid=%v", m.Uid)
+	}
+	err := c.delete(relativeUrl)
+	return err
+}
+
+func (c *Client) ServiceAdapterList() ([]fission.ServiceAdapter, error) {
+	relativeUrl := "service-adapters"
+
+	resp, err := http.Get(c.url(relativeUrl))
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	body, err := c.handleResponse(resp)
+	if err != nil {
+		return nil, err
+	}
+
+	triggers := make([]fission.ServiceAdapter, 0)
+	err = json.Unmarshal(body, &triggers)
+	if err != nil {
+		return nil, err
+	}
+
+	return triggers, nil
+}

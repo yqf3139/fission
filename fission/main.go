@@ -124,6 +124,18 @@ func main() {
 		{Name: "list", Usage: "List all watches", Flags: []cli.Flag{}, Action: wList},
 	}
 
+	// Service adapter
+	saNameFlag := cli.StringFlag{Name: "name", Usage: "Service adapter name"}
+	saInstanceNameFlag := cli.StringFlag{Name: "instance-name", Usage: "Name of service instance which adapter connects to"}
+	saSpecFlag := cli.StringFlag{Name: "spec", Usage: "Spec of the adapter"}
+	saSubcommands := []cli.Command{
+		{Name: "create", Aliases: []string{"add"}, Usage: "Create Service adapter", Flags: []cli.Flag{saNameFlag, saInstanceNameFlag, saSpecFlag}, Action: saCreate},
+		{Name: "get", Usage: "Get service adapters", Flags: []cli.Flag{}, Action: saGet},
+		{Name: "update", Usage: "Update service adapters", Flags: []cli.Flag{saNameFlag, saInstanceNameFlag, saSpecFlag}, Action: saUpdate},
+		{Name: "delete", Usage: "Delete service adapters", Flags: []cli.Flag{saNameFlag}, Action: saDelete},
+		{Name: "list", Usage: "List service adapters", Flags: []cli.Flag{}, Action: saList},
+	}
+
 	app.Commands = []cli.Command{
 		{Name: "function", Aliases: []string{"fn"}, Usage: "Create, update and manage functions", Subcommands: fnSubcommands},
 		{Name: "httptrigger", Aliases: []string{"ht", "route"}, Usage: "Manage HTTP triggers (routes) for functions", Subcommands: htSubcommands},
@@ -131,6 +143,7 @@ func main() {
 		{Name: "mqtrigger", Aliases: []string{"mqt", "messagequeue"}, Usage: "Manage message queue triggers for functions", Subcommands: mqtSubcommands},
 		{Name: "environment", Aliases: []string{"env"}, Usage: "Manage environments", Subcommands: envSubcommands},
 		{Name: "watch", Aliases: []string{"w"}, Usage: "Manage watches", Subcommands: wSubCommands},
+		{Name: "service-adapter", Aliases: []string{"sa", "svc-adapter"}, Usage: "Manage service adapters", Subcommands: saSubcommands},
 
 		// Misc commands
 		{
