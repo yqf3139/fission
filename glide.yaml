@@ -48,3 +48,12 @@ import:
 - package: github.com/minio/go-homedir
 - package: github.com/go-ini/ini
   version: v1.28.0
+- package: gopkg.in/gorethink/gorethink.v3
+  version: v3.0.2
+- package: github.com/cenkalti/backoff
+  version: v1.0.0
+- package: github.com/hailocab/go-hostpool
+- package: golang.org/x/crypto
+  subpackages:
+  - pbkdf2
+- package: gopkg.in/fatih/pool.v2

@@ -6,14 +6,14 @@ import (
 	catalogclientset "github.com/kubernetes-incubator/service-catalog/pkg/client/clientset_generated/clientset"
 
 	"github.com/fission/fission"
-	"k8s.io/apimachinery/pkg/apis/meta/v1"
 	meta_v1 "github.com/kubernetes-incubator/service-catalog/pkg/apis/servicecatalog/v1alpha1"
+	"k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 )
 
 type AdapterFactory interface {
-	create(adapter fission.ServiceAdapter, credentials map[string]string) error
-	delete(adapter fission.ServiceAdapter, credentials map[string]string) error
+	create(adapter fission.ServiceAdapter, instanceName string, credentials map[string]string) error
+	delete(adapter fission.ServiceAdapter, instanceName string, credentials map[string]string) error
 }
 
 type (
@@ -90,7 +90,7 @@ func (manager *AdapterManager) Sync(adapters []fission.ServiceAdapter) {
 				}
 
 				log.Println("Delete adapter, ", a.Name)
-				err := factory.delete(a, credentials)
+				err := factory.delete(a, instance.Name, credentials)
 				if err != nil {
 					log.Println("Error when deleting adapter, ", err)
 				}
@@ -113,7 +113,7 @@ func (manager *AdapterManager) Sync(adapters []fission.ServiceAdapter) {
 					continue
 				}
 				log.Println("Create adapter, ", a.Name)
-				err := factory.create(a, credentials)
+				err := factory.create(a, instance.Name, credentials)
 				if err != nil {
 					log.Println("Error when creating adapter, ", err)
 				}

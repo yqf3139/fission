@@ -24,8 +24,8 @@ import (
 	"github.com/satori/go.uuid"
 	"github.com/urfave/cli"
 
-	"github.com/fission/fission"
 	"encoding/json"
+	"github.com/fission/fission"
 )
 
 func saCreate(c *cli.Context) error {

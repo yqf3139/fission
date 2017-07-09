@@ -11,8 +11,8 @@ import (
 	"github.com/fission/fission/mqtrigger"
 	"github.com/fission/fission/poolmgr"
 	"github.com/fission/fission/router"
-	"github.com/fission/fission/timer"
 	"github.com/fission/fission/service-adapter"
+	"github.com/fission/fission/timer"
 )
 
 func runController(port int, etcdUrl string, filepath string) {

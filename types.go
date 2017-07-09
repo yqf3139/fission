@@ -108,8 +108,8 @@ type (
 	ServiceAdapter struct {
 		Metadata `json:"metadata"`
 
-		InstanceName string`json:"instancename"`
-		Spec         map[string]string`json:"spec"`
+		InstanceName string            `json:"instancename"`
+		Spec         map[string]string `json:"spec"`
 	}
 
 	errorCode int

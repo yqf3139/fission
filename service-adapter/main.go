@@ -18,17 +18,17 @@ package service_adapter
 
 import (
 	"fmt"
+	"log"
 	"net/http"
 	"os"
-	"log"
 
-	"github.com/gorilla/mux"
 	"github.com/gorilla/handlers"
-	"k8s.io/client-go/rest"
+	"github.com/gorilla/mux"
 	catalogclientset "github.com/kubernetes-incubator/service-catalog/pkg/client/clientset_generated/clientset"
+	"k8s.io/client-go/kubernetes"
+	"k8s.io/client-go/rest"
 
 	controllerClient "github.com/fission/fission/controller/client"
-	"k8s.io/client-go/kubernetes"
 )
 
 // Get a service catalog client
@@ -67,7 +67,6 @@ func getKubernetesClient() (*kubernetes.Clientset, error) {
 	return clientset, nil
 }
 
-
 func Start(controllerUrl string, routerUrl string) error {
 	controller := controllerClient.MakeClient(controllerUrl)
 	catalogClient, err := getServiceCatalogClient()
@@ -86,9 +85,11 @@ func Start(controllerUrl string, routerUrl string) error {
 	minioAdapter := &MinioAdapterFactory{
 		natsService: natsService,
 	}
+	rethinkDBAdapter := MakeRethinkDBAdapterFactory(natsService)
 
 	manager := MakeAdapterManager(map[string]AdapterFactory{
-		"minio": minioAdapter,
+		"minio":     minioAdapter,
+		"rethinkdb": rethinkDBAdapter,
 	}, catalogClient, kubernetesClient)
 
 	MakeAdapterSync(controller, manager)

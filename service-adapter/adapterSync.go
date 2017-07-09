@@ -1,8 +1,8 @@
 package service_adapter
 
 import (
-	"time"
 	"log"
+	"time"
 
 	controllerClient "github.com/fission/fission/controller/client"
 )
@@ -40,4 +40,3 @@ func (as *AdapterSync) syncSvc() {
 		time.Sleep(3 * time.Second)
 	}
 }
-

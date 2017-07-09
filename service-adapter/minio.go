@@ -1,16 +1,16 @@
 package service_adapter
 
 import (
-	"net/http"
+	"encoding/json"
+	"fmt"
 	"io/ioutil"
 	"log"
-	"fmt"
-	"encoding/json"
+	"net/http"
 
-	"github.com/jmoiron/jsonq"
-	"github.com/fission/fission"
-	"github.com/minio/minio-go"
 	"errors"
+	"github.com/fission/fission"
+	"github.com/jmoiron/jsonq"
+	"github.com/minio/minio-go"
 )
 
 type MinioAdapterFactory struct {
@@ -36,7 +36,9 @@ func getMinioClient(credentials map[string]string) (*minio.Client, error) {
 	return minio.New(fmt.Sprintf("%v:%v", endpoint, port), accessKey, secretKey, false)
 }
 
-func (f *MinioAdapterFactory) create(adapter fission.ServiceAdapter, credentials map[string]string) error {
+func (f *MinioAdapterFactory) create(adapter fission.ServiceAdapter,
+	instanceName string, credentials map[string]string) error {
+
 	minioClient, err := getMinioClient(credentials)
 	if err != nil {
 		fmt.Println("Error getting minio client", err)
@@ -72,7 +74,9 @@ func (f *MinioAdapterFactory) create(adapter fission.ServiceAdapter, credentials
 	return minioClient.SetBucketNotification(bucket, bucketNotification)
 }
 
-func (f *MinioAdapterFactory) delete(adapter fission.ServiceAdapter, credentials map[string]string) error {
+func (f *MinioAdapterFactory) delete(adapter fission.ServiceAdapter,
+	instanceName string, credentials map[string]string) error {
+
 	minioClient, err := getMinioClient(credentials)
 	if err != nil {
 		fmt.Println("Error getting minio client", err)
