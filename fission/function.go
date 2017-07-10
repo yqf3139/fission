@@ -198,6 +198,13 @@ func fnUpdate(c *cli.Context) error {
 		function.Code = string(code)
 	}
 
+	serviceInstancesStr := c.String("service-instances")
+	serviceInstances := make([]string, 0)
+	if len(serviceInstancesStr) > 0 {
+		serviceInstances = strings.Split(serviceInstancesStr, ",")
+	}
+	function.ServiceInstances = serviceInstances
+
 	_, err = client.FunctionUpdate(function)
 	checkErr(err, "update function")
 
