@@ -35,7 +35,8 @@ type (
 	Timer struct {
 		triggers       map[string]*timerTriggerWithCron
 		requestChannel chan *timerRequest
-		publisher      *publisher.Publisher
+		funcPublisher  publisher.Publisher
+		flowPublisher  publisher.Publisher
 	}
 
 	timerRequest struct {
@@ -52,11 +53,12 @@ type (
 	}
 )
 
-func MakeTimer(publisher publisher.Publisher) *Timer {
+func MakeTimer(funcPub publisher.Publisher, flowPub publisher.Publisher) *Timer {
 	timer := &Timer{
 		triggers:       make(map[string]*timerTriggerWithCron),
 		requestChannel: make(chan *timerRequest),
-		publisher:      &publisher,
+		funcPublisher:  funcPub,
+		flowPublisher:  flowPub,
 	}
 	go timer.svc()
 	return timer
@@ -136,7 +138,11 @@ func (timer *Timer) newCron(t fission.TimeTrigger) *cron.Cron {
 		headers := map[string]string{
 			"X-Fission-Timer-Name": t.Name,
 		}
-		(*timer.publisher).Publish("", headers, fission.UrlForFunction(&t.Function))
+		if t.Function.Name == "" && t.Flow.Name != "" {
+			timer.flowPublisher.Publish("", headers, t.Flow.Name)
+		} else {
+			timer.funcPublisher.Publish("", headers, fission.UrlForFunction(&t.Function))
+		}
 	})
 	c.Start()
 	log.Printf("Add new cron for time trigger %v", t.Name)

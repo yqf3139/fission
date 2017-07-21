@@ -52,11 +52,13 @@ type (
 		UrlPattern string   `json:"urlpattern"`
 		Method     string   `json:"method"`
 		Function   Metadata `json:"function"`
+		Flow       Metadata `json:"flow,omitempty"`
 	}
 
 	MessageQueueTrigger struct {
 		Metadata         `json:"metadata"`
 		Function         Metadata `json:"function"`
+		Flow             Metadata `json:"flow,omitempty"`
 		MessageQueueType string   `json:"messageQueueType"`
 		Topic            string   `json:"topic"`
 		ResponseTopic    string   `json:"respTopic,omitempty"`
@@ -84,6 +86,7 @@ type (
 		Cron string `json:"cron"`
 
 		Function Metadata `json:"function"`
+		Flow     Metadata `json:"flow,omitempty"`
 	}
 
 	// Errors returned by the Fission API.
@@ -124,6 +127,8 @@ const (
 	ErrorInvalidArgument
 	ErrorNoSpace
 	ErrorNotImplmented
+
+	FLOW_SERVER_ENDPOINT = "http://nodered.fission:1880"
 )
 
 // must match order and len of the above const

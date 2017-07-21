@@ -36,8 +36,9 @@ func mqtCreate(c *cli.Context) error {
 		mqtName = uuid.NewV4().String()
 	}
 	fnName := c.String("function")
-	if len(fnName) == 0 {
-		fatal("Need a function name to create a trigger, use --function")
+	flName := c.String("flow")
+	if len(fnName) == 0 && len(flName) == 0 {
+		fatal("Need a function or flow name to create a trigger, use --function or --flow")
 	}
 	fnUid := c.String("uid")
 	mqType := c.String("mqtype")
@@ -72,7 +73,10 @@ func mqtCreate(c *cli.Context) error {
 		Metadata: fission.Metadata{
 			Name: mqtName,
 		},
-		Function:         fnMeta,
+		Function: fnMeta,
+		Flow: fission.Metadata{
+			Name: flName,
+		},
 		MessageQueueType: mqType,
 		Topic:            topic,
 		ResponseTopic:    respTopic,
@@ -135,11 +139,12 @@ func mqtList(c *cli.Context) error {
 
 	w := tabwriter.NewWriter(os.Stdout, 0, 0, 1, ' ', 0)
 
-	fmt.Fprintf(w, "%v\t%v\t%v\t%v\t%v\t%v\n",
-		"NAME", "FUNCTION_NAME", "FUNCTION_UID", "MESSAGE_QUEUE_TYPE", "TOPIC", "RESPONSE_TOPIC")
+	fmt.Fprintf(w, "%v\t%v\t%v\t%v\t%v\t%v\t%v\n",
+		"NAME", "FUNCTION_NAME", "FUNCTION_UID", "FLOW_NAME", "MESSAGE_QUEUE_TYPE", "TOPIC", "RESPONSE_TOPIC")
 	for _, mqt := range mqts {
-		fmt.Fprintf(w, "%v\t%v\t%v\t%v\t%v\t%v\n",
-			mqt.Metadata.Name, mqt.Function.Name, mqt.Function.Uid, mqt.MessageQueueType, mqt.Topic, mqt.ResponseTopic)
+		fmt.Fprintf(w, "%v\t%v\t%v\t%v\t%v\t%v\t%v\n",
+			mqt.Metadata.Name, mqt.Function.Name, mqt.Function.Uid, mqt.Flow.Name,
+			mqt.MessageQueueType, mqt.Topic, mqt.ResponseTopic)
 	}
 	w.Flush()
 

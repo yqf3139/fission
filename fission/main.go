@@ -62,10 +62,11 @@ func main() {
 	htNameFlag := cli.StringFlag{Name: "name", Usage: "HTTP Trigger name"}
 	htFnNameFlag := cli.StringFlag{Name: "function", Usage: "Function name"}
 	htFnUidFlag := cli.StringFlag{Name: "uid", Usage: "Function UID (optional; uses latest if unspecified)"}
+	htFlNameFlag := cli.StringFlag{Name: "flow", Usage: "Flow name"}
 	htSubcommands := []cli.Command{
-		{Name: "create", Aliases: []string{"add"}, Usage: "Create HTTP trigger", Flags: []cli.Flag{htMethodFlag, htUrlFlag, htFnNameFlag, htFnUidFlag}, Action: htCreate},
+		{Name: "create", Aliases: []string{"add"}, Usage: "Create HTTP trigger", Flags: []cli.Flag{htMethodFlag, htUrlFlag, htFnNameFlag, htFnUidFlag, htFlNameFlag}, Action: htCreate},
 		{Name: "get", Usage: "Get HTTP trigger", Flags: []cli.Flag{htMethodFlag, htUrlFlag}, Action: htGet},
-		{Name: "update", Usage: "Update HTTP trigger", Flags: []cli.Flag{htNameFlag, htFnNameFlag, htFnUidFlag}, Action: htUpdate},
+		{Name: "update", Usage: "Update HTTP trigger", Flags: []cli.Flag{htNameFlag, htFnNameFlag, htFnUidFlag, htFlNameFlag}, Action: htUpdate},
 		{Name: "delete", Usage: "Delete HTTP trigger", Flags: []cli.Flag{htNameFlag}, Action: htDelete},
 		{Name: "list", Usage: "List HTTP triggers", Flags: []cli.Flag{}, Action: htList},
 	}
@@ -75,8 +76,9 @@ func main() {
 	ttCronFlag := cli.StringFlag{Name: "cron", Usage: "Time Trigger cron spec ('0 30 * * *', '@every 5m', '@hourly')"}
 	ttFnNameFlag := cli.StringFlag{Name: "function", Usage: "Function name"}
 	ttFnUidFlag := cli.StringFlag{Name: "uid", Usage: "Function UID (optional; uses latest if unspecified)"}
+	ttFlNameFlag := cli.StringFlag{Name: "flow", Usage: "Flow name"}
 	ttSubcommands := []cli.Command{
-		{Name: "create", Aliases: []string{"add"}, Usage: "Create Time trigger", Flags: []cli.Flag{ttNameFlag, ttFnNameFlag, ttFnUidFlag, ttCronFlag}, Action: ttCreate},
+		{Name: "create", Aliases: []string{"add"}, Usage: "Create Time trigger", Flags: []cli.Flag{ttNameFlag, ttFnNameFlag, ttFnUidFlag, ttFlNameFlag, ttCronFlag}, Action: ttCreate},
 		{Name: "get", Usage: "Get Time trigger", Flags: []cli.Flag{}, Action: ttGet},
 		{Name: "update", Usage: "Update Time trigger", Flags: []cli.Flag{ttNameFlag, ttCronFlag}, Action: ttUpdate},
 		{Name: "delete", Usage: "Delete Time trigger", Flags: []cli.Flag{ttNameFlag}, Action: ttDelete},
@@ -86,12 +88,13 @@ func main() {
 	// Message queue trigger
 	mqtNameFlag := cli.StringFlag{Name: "name", Usage: "Message queue Trigger name"}
 	mqtFnNameFlag := cli.StringFlag{Name: "function", Usage: "Function name"}
+	mqtFlNameFlag := cli.StringFlag{Name: "flow", Usage: "Flow name"}
 	mqtFnUidFlag := cli.StringFlag{Name: "uid", Usage: "Function UID (optional; uses latest if unspecified)"}
 	mqtMQTypeFlag := cli.StringFlag{Name: "mqtype", Usage: "Message queue type, e.g. nats-streaming  (optional; uses \"nats-streaming\" if unspecified)"}
 	mqtTopicFlag := cli.StringFlag{Name: "topic", Usage: "Message queue Topic the trigger listens on"}
 	mqtRespTopicFlag := cli.StringFlag{Name: "resptopic", Usage: "Topic that the function response is sent on (optional; response discarded if unspecified)"}
 	mqtSubcommands := []cli.Command{
-		{Name: "create", Aliases: []string{"add"}, Usage: "Create Message queue trigger", Flags: []cli.Flag{mqtNameFlag, mqtFnNameFlag, mqtFnUidFlag, mqtMQTypeFlag, mqtTopicFlag, mqtRespTopicFlag}, Action: mqtCreate},
+		{Name: "create", Aliases: []string{"add"}, Usage: "Create Message queue trigger", Flags: []cli.Flag{mqtNameFlag, mqtFnNameFlag, mqtFlNameFlag, mqtFnUidFlag, mqtMQTypeFlag, mqtTopicFlag, mqtRespTopicFlag}, Action: mqtCreate},
 		{Name: "get", Usage: "Get message queue trigger", Flags: []cli.Flag{}, Action: mqtGet},
 		{Name: "update", Usage: "Update message queue trigger", Flags: []cli.Flag{mqtNameFlag, mqtTopicFlag, mqtRespTopicFlag}, Action: mqtUpdate},
 		{Name: "delete", Usage: "Delete message queue trigger", Flags: []cli.Flag{mqtNameFlag}, Action: mqtDelete},

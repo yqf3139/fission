@@ -22,6 +22,7 @@
     "morgan": "",
     "mysql": "^2.13.0",
     "mz": "~2.1.0",
+    "node-nats-streaming": "^0.0.25",
     "redis": "^2.7.1",
     "request": "^2.81.0",
     "request-promise-native": "^1.0.3",

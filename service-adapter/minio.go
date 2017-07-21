@@ -9,6 +9,7 @@ import (
 
 	"errors"
 	"github.com/fission/fission"
+	"github.com/gorilla/mux"
 	"github.com/jmoiron/jsonq"
 	"github.com/minio/minio-go"
 )
@@ -99,6 +100,8 @@ func (f *MinioAdapterFactory) delete(adapter fission.ServiceAdapter,
 }
 
 func (f *MinioAdapterFactory) eventHandler(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	id := vars["id"]
 	body, err := ioutil.ReadAll(r.Body)
 	if err != nil {
 		http.Error(w, "Failed to read request", 500)
@@ -127,7 +130,7 @@ func (f *MinioAdapterFactory) eventHandler(w http.ResponseWriter, r *http.Reques
 		return
 	}
 
-	topic := fmt.Sprintf("fission.service-adapter.minio.%v", bucketName)
+	topic := fmt.Sprintf("fission.service-adapter.minio.%v.%v", id, bucketName)
 
 	log.Println("pub event to ", topic)
 	f.natsService.Publish(topic, body)

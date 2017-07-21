@@ -28,3 +28,12 @@ func UrlForFunction(m *Metadata) string {
 		return fmt.Sprintf("%v/%v", prefix, m.Name)
 	}
 }
+
+func UrlForFlow(m *Metadata) string {
+	prefix := "/fission-function"
+	if len(m.Uid) > 0 {
+		return fmt.Sprintf("%v/%v/%v", prefix, m.Name, m.Uid)
+	} else {
+		return fmt.Sprintf("%v/%v", prefix, m.Name)
+	}
+}

@@ -92,7 +92,12 @@ func isTopicValidForNats(topic string) bool {
 
 func msgHandler(nats *Nats, trigger fission.MessageQueueTrigger) func(*ns.Msg) {
 	return func(msg *ns.Msg) {
-		url := nats.routerUrl + "/" + strings.TrimPrefix(fission.UrlForFunction(&trigger.Function), "/")
+		url := ""
+		if trigger.Function.Name == "" && trigger.Flow.Name != "" {
+			url = fmt.Sprintf("%v/%v", fission.FLOW_SERVER_ENDPOINT, trigger.Flow.Name)
+		} else {
+			url = nats.routerUrl + "/" + strings.TrimPrefix(fission.UrlForFunction(&trigger.Function), "/")
+		}
 		log.Printf("Making HTTP request to %v", url)
 
 		headers := map[string]string{

@@ -17,14 +17,16 @@ limitations under the License.
 package timer
 
 import (
+	"github.com/fission/fission"
 	controllerClient "github.com/fission/fission/controller/client"
 	"github.com/fission/fission/publisher"
 )
 
 func Start(controllerUrl string, routerUrl string) error {
 	controller := controllerClient.MakeClient(controllerUrl)
-	poster := publisher.MakeWebhookPublisher(routerUrl)
-	MakeTimerSync(controller, MakeTimer(poster))
+	routerPoster := publisher.MakeWebhookPublisher(routerUrl)
+	flowPoster := publisher.MakeWebhookPublisher(fission.FLOW_SERVER_ENDPOINT)
+	MakeTimerSync(controller, MakeTimer(routerPoster, flowPoster))
 
 	return nil
 }

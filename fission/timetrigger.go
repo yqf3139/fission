@@ -35,8 +35,9 @@ func ttCreate(c *cli.Context) error {
 		name = uuid.NewV4().String()
 	}
 	fnName := c.String("function")
-	if len(fnName) == 0 {
-		fatal("Need a function name to create a trigger, use --function")
+	flName := c.String("flow")
+	if len(fnName) == 0 && len(flName) == 0 {
+		fatal("Need a function or flow name to create a trigger, use --function or --flow")
 	}
 	fnUid := c.String("uid")
 	cron := c.String("cron")
@@ -52,6 +53,9 @@ func ttCreate(c *cli.Context) error {
 		Function: fission.Metadata{
 			Name: fnName,
 			Uid:  fnUid,
+		},
+		Flow: fission.Metadata{
+			Name: flName,
 		},
 	}
 
@@ -110,11 +114,11 @@ func ttList(c *cli.Context) error {
 
 	w := tabwriter.NewWriter(os.Stdout, 0, 0, 1, ' ', 0)
 
-	fmt.Fprintf(w, "%v\t%v\t%v\t%v\n",
-		"NAME", "CRON", "FUNCTION_NAME", "FUNCTION_UID")
+	fmt.Fprintf(w, "%v\t%v\t%v\t%v\t%v\n",
+		"NAME", "CRON", "FUNCTION_NAME", "FUNCTION_UID", "FLOW_NAME")
 	for _, tt := range tts {
-		fmt.Fprintf(w, "%v\t%v\t%v\t%v\n",
-			tt.Metadata.Name, tt.Cron, tt.Function.Name, tt.Function.Uid)
+		fmt.Fprintf(w, "%v\t%v\t%v\t%v\t%v\n",
+			tt.Metadata.Name, tt.Cron, tt.Function.Name, tt.Function.Uid, tt.Flow.Name)
 	}
 	w.Flush()
 

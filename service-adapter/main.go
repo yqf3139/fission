@@ -96,7 +96,7 @@ func Start(controllerUrl string, routerUrl string) error {
 
 	// endpoint for minio webhook
 	r := mux.NewRouter()
-	r.HandleFunc("/minio", minioAdapter.eventHandler).Methods("POST")
+	r.HandleFunc("/minio/{id}", minioAdapter.eventHandler).Methods("POST")
 
 	port := "8888"
 	address := fmt.Sprintf(":%v", port)

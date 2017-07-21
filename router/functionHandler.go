@@ -35,6 +35,7 @@ type functionHandler struct {
 	fmap     *functionServiceMap
 	poolmgr  *poolmgrClient.Client
 	Function fission.Metadata
+	Flow     fission.Metadata
 }
 
 func (fh *functionHandler) getServiceForFunction() (*url.URL, error) {
@@ -98,29 +99,36 @@ func (fh *functionHandler) handler(responseWriter http.ResponseWriter, request *
 		request.Header.Add(fmt.Sprintf("X-Fission-Params-%v", k), v)
 	}
 
-	// cache lookup
-	serviceUrl, err := fh.fmap.lookup(&fh.Function)
-	if err != nil {
-		// Cache miss: request the Pool Manager to make a new service.
-		log.Printf("Not cached, getting new service for %v", fh.Function)
+	var serviceUrl *url.URL
+	var err error
 
-		var poolErr error
-		serviceUrl, poolErr = fh.getServiceForFunction()
-		if poolErr != nil {
-			log.Printf("Failed to get service for function (%v,%v): %v",
-				fh.Function.Name, fh.Function.Uid, poolErr)
-			// We might want a specific error code or header for fission
-			// failures as opposed to user function bugs.
-			http.Error(responseWriter, "Internal server error (fission)", 500)
-			return
-		}
-
-		// add it to the map
-		fh.fmap.assign(&fh.Function, serviceUrl)
+	if fh.Function.Name == "" && fh.Flow.Name != "" {
+		serviceUrl, _ = url.Parse(fission.FLOW_SERVER_ENDPOINT)
 	} else {
-		// if we're using our cache, asynchronously tell
-		// poolmgr we're using this service
-		go fh.tapService(serviceUrl)
+		// cache lookup
+		serviceUrl, err = fh.fmap.lookup(&fh.Function)
+		if err != nil {
+			// Cache miss: request the Pool Manager to make a new service.
+			log.Printf("Not cached, getting new service for %v", fh.Function)
+
+			var poolErr error
+			serviceUrl, poolErr = fh.getServiceForFunction()
+			if poolErr != nil {
+				log.Printf("Failed to get service for function (%v,%v): %v",
+					fh.Function.Name, fh.Function.Uid, poolErr)
+				// We might want a specific error code or header for fission
+				// failures as opposed to user function bugs.
+				http.Error(responseWriter, "Internal server error (fission)", 500)
+				return
+			}
+
+			// add it to the map
+			fh.fmap.assign(&fh.Function, serviceUrl)
+		} else {
+			// if we're using our cache, asynchronously tell
+			// poolmgr we're using this service
+			go fh.tapService(serviceUrl)
+		}
 	}
 
 	// Proxy off our request to the serviceUrl, and send the response back.
@@ -138,6 +146,10 @@ func (fh *functionHandler) handler(responseWriter http.ResponseWriter, request *
 		// multiple functions per container, we could use the
 		// function metadata here.
 		req.URL.Path = "/"
+
+		if fh.Function.Name == "" && fh.Flow.Name != "" {
+			req.URL.Path = fmt.Sprintf("/%v", fh.Flow.Name)
+		}
 
 		// leave the query string intact (req.URL.RawQuery)
 
