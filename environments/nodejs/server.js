@@ -7,6 +7,7 @@ const express = require('express');
 const app = express();
 const bodyParser = require('body-parser');
 const morgan = require('morgan');
+const multer = require("multer");
 
 // Command line opts
 const argv = require('minimist')(process.argv.slice(1));
@@ -20,6 +21,13 @@ if (!argv.port) {
     argv.port = 8888;
 }
 
+const mp = multer({storage: multer.memoryStorage()}).any();
+const multipartParser = function (req, res, next) {
+    mp(req, res, function (err) {
+        req._body = true;
+        next(err);
+    })
+};
 
 // Node resolves module paths according to a file's location. We load
 // the file from argv.codepath, but tell users to put dependencies in
@@ -141,6 +149,8 @@ app.use(bodyParser.raw());
 app.post('/specialize', specialize);
 
 app.use(getClients);
+
+app.use(multipartParser);
 
 // Generic route -- all http requests go to the user function.
 app.all('/', function (req, res) {

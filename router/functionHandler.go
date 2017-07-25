@@ -165,7 +165,7 @@ func (fh *functionHandler) handler(responseWriter http.ResponseWriter, request *
 		Director: director,
 		Transport: RetryingRoundTripper{
 			maxRetries:    10,
-			initalTimeout: 50 * time.Millisecond,
+			initalTimeout: 5 * time.Second,
 		},
 	}
 	delay := time.Now().Sub(reqStartTime)
