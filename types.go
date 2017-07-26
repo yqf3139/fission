@@ -38,6 +38,8 @@ type (
 		Environment      Metadata `json:"environment"`
 		Code             string   `json:"code"`
 		ServiceInstances []string `json:"serviceInstances"`
+		CpuTarget   int      `json:"cputarget,omitempty"`
+		MaxInstance int      `json:"maxinstance,omitempty"`
 	}
 
 	// Environment identifies the language and OS specific
@@ -48,6 +50,10 @@ type (
 	Environment struct {
 		Metadata             `json:"metadata"`
 		RunContainerImageUrl string `json:"runContainerImageUrl"`
+		CpuRequest           string `json:"cpurequest,omitempty"`
+		CpuLimit             string `json:"cpulimit,omitempty"`
+		MemRequest           string `json:"memrequest,omitempty"`
+		MemLimit             string `json:"memlimit,omitempty"`
 	}
 
 	// HTTPTrigger maps URL patterns to functions.  Function.UID

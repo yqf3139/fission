@@ -18,13 +18,18 @@ package poolmgr
 
 import (
 	"log"
+	"net/http"
 	"strings"
+	"fmt"
 
 	"github.com/dchest/uniuri"
 	controllerclient "github.com/fission/fission/controller/client"
 	catalogclientset "github.com/kubernetes-incubator/service-catalog/pkg/client/clientset_generated/clientset"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
+	"github.com/opentracing/opentracing-go"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
+	zipkin "github.com/openzipkin/zipkin-go-opentracing"
 )
 
 // Get a kubernetes client using the pod's service account.  This only
@@ -63,6 +68,20 @@ func getServiceCatalogClient() (*catalogclientset.Clientset, error) {
 	return clientset, nil
 }
 
+func serveMetric() {
+	// Expose the registered metrics via HTTP.
+	http.Handle("/metrics", promhttp.Handler())
+	log.Fatal(http.ListenAndServe(metricAddr, nil))
+}
+
+func initTracing(svcName string, port int) {
+	collector, _ := zipkin.NewHTTPCollector(
+		fmt.Sprintf("http://%s:9411/api/v1/spans", "zipkin.fission"))
+	tracer, _ := zipkin.NewTracer(
+		zipkin.NewRecorder(collector, false, fmt.Sprintf("%v.fission:%v", svcName, port), svcName))
+	opentracing.SetGlobalTracer(tracer)
+}
+
 func StartPoolmgr(controllerUrl string, namespace string, port int) error {
 	controllerUrl = strings.TrimSuffix(controllerUrl, "/")
 	controllerClient := controllerclient.MakeClient(controllerUrl)
@@ -79,6 +98,8 @@ func StartPoolmgr(controllerUrl string, namespace string, port int) error {
 		return err
 	}
 
+	initTracing("poolmgr", port)
+
 	instanceId := uniuri.NewLen(8)
 	cleanupOldPoolmgrResources(kubernetesClient, namespace, instanceId)
 
@@ -87,6 +108,7 @@ func StartPoolmgr(controllerUrl string, namespace string, port int) error {
 
 	api := MakeAPI(gpm, controllerClient, fsCache)
 	go api.Serve(port)
+	go serveMetric()
 
 	return nil
 }

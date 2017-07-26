@@ -169,6 +169,10 @@ Options:
 		runTimer(controllerUrl, routerUrl)
 	}
 
+	if arguments["--timer"] == true {
+		runTimer(controllerUrl, routerUrl)
+	}
+
 	if arguments["--mqt"] == true {
 		runMessageQueueMgr(controllerUrl, routerUrl)
 	}

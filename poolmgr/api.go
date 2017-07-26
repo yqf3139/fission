@@ -29,25 +29,17 @@ import (
 
 	"github.com/gorilla/handlers"
 	"github.com/gorilla/mux"
+	"github.com/opentracing/opentracing-go"
 
 	"github.com/fission/fission"
 	"github.com/fission/fission/cache"
 	controllerclient "github.com/fission/fission/controller/client"
 )
 
-type funcSvc struct {
-	function    *fission.Metadata    // function this pod/service is for
-	environment *fission.Environment // env it was obtained from
-	address     string               // Host:Port or IP:Port that the service can be reached at.
-	podName     string               // pod name (within the function namespace)
-
-	ctime time.Time
-	atime time.Time
-}
-
 type createFuncServiceRequest struct {
 	funcMeta *fission.Metadata
 	respChan chan *createFuncServiceResponse
+	parent   opentracing.Span
 }
 type createFuncServiceResponse struct {
 	address string
@@ -57,19 +49,18 @@ type createFuncServiceResponse struct {
 type API struct {
 	poolMgr          *GenericPoolManager
 	functionEnv      *cache.Cache // map[fission.Metadata]fission.Environment
+	function         *cache.Cache // map[fission.Metadata]fission.Function
 	fsCache          *functionServiceCache
 	controller       *controllerclient.Client
 	fsCreateChannels map[fission.Metadata]*sync.WaitGroup
 	requestChan      chan *createFuncServiceRequest
-
-	//functionService *cache.Cache // map[fission.Metadata]*funcSvc
-	//urlFuncSvc      *cache.Cache // map[string]*funcSvc
 }
 
 func MakeAPI(gpm *GenericPoolManager, controller *controllerclient.Client, fsCache *functionServiceCache) *API {
 	api := API{
 		poolMgr:          gpm,
 		functionEnv:      cache.MakeCache(time.Minute, 0),
+		function:         cache.MakeCache(time.Minute, 0),
 		fsCache:          fsCache,
 		controller:       controller,
 		fsCreateChannels: make(map[fission.Metadata]*sync.WaitGroup),
@@ -89,6 +80,7 @@ func (api *API) serveCreateFuncServices() {
 	for {
 		req := <-api.requestChan
 		m := req.funcMeta
+		parent := req.parent
 
 		// Cache miss -- is this first one to request the func?
 		wg, found := api.fsCreateChannels[*m]
@@ -102,7 +94,7 @@ func (api *API) serveCreateFuncServices() {
 			// launch a goroutine for each request, to parallelize
 			// the specialization of different functions
 			go func() {
-				address, err := api.createServiceForFunction(m)
+				address, err := api.createServiceForFunction(m, parent)
 				req.respChan <- &createFuncServiceResponse{
 					address: address,
 					err:     err,
@@ -120,7 +112,7 @@ func (api *API) serveCreateFuncServices() {
 				fsvc, err := api.fsCache.GetByFunction(m)
 				address := ""
 				if err == nil {
-					address = fsvc.address
+					address = fsvc.getAddress()
 				}
 				req.respChan <- &createFuncServiceResponse{
 					address: address,
@@ -131,7 +123,23 @@ func (api *API) serveCreateFuncServices() {
 	}
 }
 
+func startTracingFromHttpHeader(opName string, r *http.Request) opentracing.Span {
+	var sp opentracing.Span
+	wireContext, err := opentracing.GlobalTracer().Extract(
+		opentracing.TextMap,
+		opentracing.HTTPHeadersCarrier(r.Header))
+	if err != nil {
+		// If for whatever reason we can't join, go ahead an start a new root span.
+		sp = opentracing.StartSpan(opName)
+	} else {
+		sp = opentracing.StartSpan(opName, opentracing.ChildOf(wireContext))
+	}
+	return sp
+}
+
 func (api *API) getServiceForFunctionApi(w http.ResponseWriter, r *http.Request) {
+	sp := startTracingFromHttpHeader("poolmgr::GetServiceForFunctionApi", r)
+	defer sp.Finish()
 	body, err := ioutil.ReadAll(r.Body)
 	if err != nil {
 		http.Error(w, "Failed to read request", 500)
@@ -146,7 +154,7 @@ func (api *API) getServiceForFunctionApi(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
-	serviceName, err := api.getServiceForFunction(&m)
+	serviceName, err := api.getServiceForFunction(&m, sp)
 	if err != nil {
 		code, msg := fission.GetHTTPError(err)
 		log.Printf("Error: %v: %v", code, msg)
@@ -156,37 +164,36 @@ func (api *API) getServiceForFunctionApi(w http.ResponseWriter, r *http.Request)
 	w.Write([]byte(serviceName))
 }
 
-func (api *API) getFunctionEnv(m *fission.Metadata) (*fission.Environment, error) {
-	var env *fission.Environment
-
+func (api *API) getFunctionInfo(m *fission.Metadata) (*fission.Environment, *fission.Function, error) {
 	// Cached ?
-	result, err := api.functionEnv.Get(*m)
+	e, err := api.functionEnv.Get(*m)
+	f, err := api.function.Get(*m)
 	if err == nil {
-		env = result.(*fission.Environment)
-		return env, nil
+		return e.(*fission.Environment), f.(*fission.Function), nil
 	}
 
 	// Cache miss -- get func from controller
 	log.Printf("[%v] getting function from controller", m)
-	f, err := api.controller.FunctionGet(m)
+	fnc, err := api.controller.FunctionGet(m)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	// Get env from metadata
 	log.Printf("[%v] getting env from controller", m)
-	env, err = api.controller.EnvironmentGet(&f.Environment)
+	env, err := api.controller.EnvironmentGet(&fnc.Environment)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	// cache for future
 	api.functionEnv.Set(*m, env)
+	api.function.Set(*m, fnc)
 
-	return env, nil
+	return env, fnc, nil
 }
 
-func (api *API) getServiceForFunction(m *fission.Metadata) (string, error) {
+func (api *API) getServiceForFunction(m *fission.Metadata, parent opentracing.Span) (string, error) {
 	// Make sure we have the full metadata.  This ensures that
 	// poolmgr does not implicitly interpret empty-UID as latest
 	// version.
@@ -200,38 +207,43 @@ func (api *API) getServiceForFunction(m *fission.Metadata) (string, error) {
 	fsvc, err := api.fsCache.GetByFunction(m)
 	if err == nil {
 		// Cached, return svc address
-		return fsvc.address, nil
+		return fsvc.getAddress(), nil
 	}
 
 	respChan := make(chan *createFuncServiceResponse)
 	api.requestChan <- &createFuncServiceRequest{
 		funcMeta: m,
 		respChan: respChan,
+		parent:   parent,
 	}
 	resp := <-respChan
 	return resp.address, resp.err
 }
 
-func (api *API) createServiceForFunction(m *fission.Metadata) (string, error) {
+func (api *API) createServiceForFunction(m *fission.Metadata, parent opentracing.Span) (string, error) {
+	traceCreateNewFuncSvc := opentracing.StartSpan("poolmgr::CreateNewFuncSvc",
+		opentracing.ChildOf(parent.Context()))
+	defer traceCreateNewFuncSvc.Finish()
+
 	// None exists, so create a new funcSvc:
 	log.Printf("[%v] No cached function service found, creating one", m.Name)
 
 	// from Func -> get Env
 	log.Printf("[%v] getting environment for function", m.Name)
-	env, err := api.getFunctionEnv(m)
+	traceGetFunctionEnv := opentracing.StartSpan("poolmgr::GetFunctionEnv",
+		opentracing.ChildOf(parent.Context()))
+	env, fnc, err := api.getFunctionInfo(m)
+	traceGetFunctionEnv.Finish()
 	if err != nil {
 		return "", err
 	}
 
 	// from Env -> get GenericPool
 	log.Printf("[%v] getting generic pool for env", m.Name)
+	traceGetGenericPool := opentracing.StartSpan("poolmgr::GetGenericPool",
+		opentracing.ChildOf(parent.Context()))
 	pool, err := api.poolMgr.GetPool(env)
-	if err != nil {
-		return "", err
-	}
-
-	log.Printf("[%v] getting function from controller", m)
-	f, err := api.controller.FunctionGet(m)
+	traceGetGenericPool.Finish()
 	if err != nil {
 		return "", err
 	}
@@ -239,15 +251,23 @@ func (api *API) createServiceForFunction(m *fission.Metadata) (string, error) {
 	// from GenericPool -> get one function container
 	// (this also adds to the cache)
 	log.Printf("[%v] getting function service from pool", m.Name)
-	fsvc, err := pool.GetFuncSvc(m, f)
+	traceGetFunctionContainer := opentracing.StartSpan("poolmgr::GetFunctionContainer",
+		opentracing.ChildOf(parent.Context()))
+	funcSvc, err := pool.GetFuncSvc(m, fnc, env)
+	traceGetFunctionContainer.Finish()
 	if err != nil {
 		return "", err
 	}
-	return fsvc.address, nil
+
+	increaseColdStarts(m.Name, m.Uid)
+	return funcSvc.getAddress(), nil
 }
 
 // find funcSvc and update its atime
 func (api *API) tapService(w http.ResponseWriter, r *http.Request) {
+	sp := startTracingFromHttpHeader("poolmgr::TapService", r)
+	defer sp.Finish()
+
 	body, err := ioutil.ReadAll(r.Body)
 	if err != nil {
 		http.Error(w, "Failed to read request", 500)

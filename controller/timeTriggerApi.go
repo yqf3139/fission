@@ -23,7 +23,7 @@ import (
 
 	"github.com/gorilla/mux"
 	"github.com/robfig/cron"
-	log "github.com/sirupsen/logrus"
+	log "github.com/Sirupsen/logrus"
 
 	"github.com/fission/fission"
 )

@@ -25,7 +25,7 @@ import (
 
 	"github.com/coreos/etcd/client"
 	"github.com/satori/go.uuid"
-	log "github.com/sirupsen/logrus"
+	log "github.com/Sirupsen/logrus"
 	"golang.org/x/net/context"
 
 	"github.com/fission/fission"

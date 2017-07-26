@@ -20,7 +20,7 @@ import (
 	"errors"
 	"time"
 
-	log "github.com/sirupsen/logrus"
+	log "github.com/Sirupsen/logrus"
 
 	"github.com/fission/fission"
 	controllerClient "github.com/fission/fission/controller/client"

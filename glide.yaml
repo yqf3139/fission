@@ -1,6 +1,6 @@
 package: github.com/fission/fission
 import:
-- package: github.com/sirupsen/logrus
+- package: github.com/Sirupsen/logrus
   version: 68cec9f21fbf3ea8d8f98c044bc6ce05f17b267a
 - package: github.com/coreos/etcd
   subpackages:
@@ -57,3 +57,9 @@ import:
   subpackages:
   - pbkdf2
 - package: gopkg.in/fatih/pool.v2
+- package: github.com/prometheus/client_golang
+  version: v0.8.0
+- package: github.com/opentracing/opentracing-go
+  version: v1.0.2
+- package: github.com/openzipkin/zipkin-go-opentracing
+  version: v0.3.0

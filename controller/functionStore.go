@@ -17,7 +17,7 @@ limitations under the License.
 package controller
 
 import (
-	log "github.com/sirupsen/logrus"
+	log "github.com/Sirupsen/logrus"
 
 	"github.com/fission/fission"
 	"github.com/satori/go.uuid"
@@ -107,6 +107,8 @@ func (fs *FunctionStore) Update(f *fission.Function) (string, error) {
 	if fnew.ServiceInstances == nil {
 		fnew.ServiceInstances = make([]string, 0)
 	}
+	fnew.CpuTarget = f.CpuTarget
+	fnew.MaxInstance = f.MaxInstance
 
 	err = fs.ResourceStore.update(fnew)
 	if err != nil {

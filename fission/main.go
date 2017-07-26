@@ -45,13 +45,15 @@ func main() {
 	fnFollowFlag := cli.BoolFlag{Name: "follow, f", Usage: "specify if the logs should be streamed"}
 	fnDetailFlag := cli.BoolFlag{Name: "detail, d", Usage: "display detailed information"}
 	fnLogDBTypeFlag := cli.StringFlag{Name: "dbtype", Usage: "log database type, e.g. influxdb (currently only influxdb is supported)"}
+	fnCpuTargetFlag := cli.StringFlag{Name: "cputarget", Usage: "target cpu usage in percentage for hpa to scale"}
+	fnMaxInstanceFlag := cli.StringFlag{Name: "maxinstance", Usage: "max instance number the function can scale"}
 	fnServiceInstancesFlag := cli.StringFlag{Name: "service-instances", Usage: "e.g. mariadb-instance-1,redis-instance-1"}
 	fnSubcommands := []cli.Command{
-		{Name: "create", Usage: "Create new function (and optionally, an HTTP route to it)", Flags: []cli.Flag{fnNameFlag, fnEnvNameFlag, fnCodeFlag, fnPackageFlag, htUrlFlag, htMethodFlag, fnServiceInstancesFlag}, Action: fnCreate},
+		{Name: "create", Usage: "Create new function (and optionally, an HTTP route to it)", Flags: []cli.Flag{fnNameFlag, fnEnvNameFlag, fnCodeFlag, fnPackageFlag, htUrlFlag, htMethodFlag, fnServiceInstancesFlag, fnCpuTargetFlag, fnMaxInstanceFlag}, Action: fnCreate},
 		{Name: "get", Usage: "Get function source code", Flags: []cli.Flag{fnNameFlag, fnUidFlag}, Action: fnGet},
 		{Name: "edit", Usage: "Edit function source code in $EDITOR", Flags: []cli.Flag{fnNameFlag, fnUidFlag}, Action: fnEdit},
 		{Name: "getmeta", Usage: "Get function metadata", Flags: []cli.Flag{fnNameFlag, fnUidFlag}, Action: fnGetMeta},
-		{Name: "update", Usage: "Update function source code", Flags: []cli.Flag{fnNameFlag, fnEnvNameFlag, fnCodeFlag, fnPackageFlag, fnServiceInstancesFlag}, Action: fnUpdate},
+		{Name: "update", Usage: "Update function source code", Flags: []cli.Flag{fnNameFlag, fnEnvNameFlag, fnCodeFlag, fnPackageFlag, fnServiceInstancesFlag, fnCpuTargetFlag, fnMaxInstanceFlag}, Action: fnUpdate},
 		{Name: "delete", Usage: "Delete function", Flags: []cli.Flag{fnNameFlag, fnUidFlag}, Action: fnDelete},
 		{Name: "list", Usage: "List all functions", Flags: []cli.Flag{}, Action: fnList},
 		{Name: "logs", Usage: "Display funtion logs", Flags: []cli.Flag{fnNameFlag, fnPodFlag, fnFollowFlag, fnDetailFlag, fnLogDBTypeFlag}, Action: fnLogs},
@@ -105,10 +107,14 @@ func main() {
 	// environments
 	envNameFlag := cli.StringFlag{Name: "name", Usage: "Environment name"}
 	envImageFlag := cli.StringFlag{Name: "image", Usage: "Environment image URL"}
+	envCpuLimitFlag := cli.StringFlag{Name: "cpulimit", Usage: "Environment cpu limit"}
+	envMemLimitFlag := cli.StringFlag{Name: "memlimit", Usage: "Environment mem limit"}
+	envCpuRequestFlag := cli.StringFlag{Name: "cpurequest", Usage: "Environment mem request"}
+	envMemRequestFlag := cli.StringFlag{Name: "memrequest", Usage: "Environment mem request"}
 	envSubcommands := []cli.Command{
-		{Name: "create", Aliases: []string{"add"}, Usage: "Add an environment", Flags: []cli.Flag{envNameFlag, envImageFlag}, Action: envCreate},
+		{Name: "create", Aliases: []string{"add"}, Usage: "Add an environment", Flags: []cli.Flag{envNameFlag, envImageFlag, envCpuLimitFlag, envMemLimitFlag, envCpuRequestFlag, envMemRequestFlag}, Action: envCreate},
 		{Name: "get", Usage: "Get environment details", Flags: []cli.Flag{envNameFlag}, Action: envGet},
-		{Name: "update", Usage: "Update environment", Flags: []cli.Flag{envNameFlag, envImageFlag}, Action: envUpdate},
+		{Name: "update", Usage: "Update environment", Flags: []cli.Flag{envNameFlag, envImageFlag, envCpuLimitFlag, envMemLimitFlag, envCpuRequestFlag, envMemRequestFlag}, Action: envUpdate},
 		{Name: "delete", Usage: "Delete environment", Flags: []cli.Flag{envNameFlag}, Action: envDelete},
 		{Name: "list", Usage: "List all environments", Flags: []cli.Flag{}, Action: envList},
 	}

@@ -28,7 +28,7 @@ import (
 	"github.com/fission/fission"
 	"github.com/gorilla/handlers"
 	"github.com/gorilla/mux"
-	log "github.com/sirupsen/logrus"
+	log "github.com/Sirupsen/logrus"
 	"k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
@@ -104,7 +104,7 @@ func parseContainerString(containerID string) (string, error) {
 func getcontainerID(kubeClient *kubernetes.Clientset, namespace, pod, container string) (string, error) {
 	podInfo, err := kubeClient.CoreV1().Pods(namespace).Get(pod, v1.GetOptions{})
 	if err != nil {
-		log.Printf("Failed to get pod info: %v", err)
+		log.Printf("Failed to get pod info: %v, %v", err, pod)
 		return "", err
 	}
 	var containerID string
@@ -112,7 +112,7 @@ func getcontainerID(kubeClient *kubernetes.Clientset, namespace, pod, container 
 		if c.Name == container {
 			containerID, err = parseContainerString(c.ContainerID)
 			if err != nil {
-				log.Printf("Failed to get container id: %v", err)
+				log.Printf("Failed to get container id: %v, %v", err, pod)
 				return "", err
 			}
 			return containerID, nil
@@ -159,8 +159,6 @@ func createLogSymlink(w http.ResponseWriter, r *http.Request) {
 
 	containerID, err := getcontainerID(kubernetesClient, logReq.Namespace, logReq.Pod, logReq.Container)
 	if err != nil || containerID == "" {
-		log.Warningf("Failed to get container id: %v", err)
-		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
 
@@ -186,7 +184,6 @@ func removeLogSymlink(w http.ResponseWriter, r *http.Request) {
 	pod := vars["pod"]
 	logReq := logInfo.Get(pod)
 	if logReq.Pod == "" {
-		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
 

@@ -88,6 +88,15 @@ func fnCreate(c *cli.Context) error {
 	if len(serviceInstancesStr) > 0 {
 		serviceInstances = strings.Split(serviceInstancesStr, ",")
 	}
+	cpuTarget := c.Int("cputarget")
+	if cpuTarget < 1 || cpuTarget > 100 {
+		cpuTarget = 60
+	}
+
+	maxInstance := c.Int("maxinstance")
+	if maxInstance < 1 {
+		maxInstance = 3
+	}
 
 	code := fnFetchCode(fileName)
 
@@ -96,6 +105,8 @@ func fnCreate(c *cli.Context) error {
 		Environment:      fission.Metadata{Name: envName},
 		Code:             string(code),
 		ServiceInstances: serviceInstances,
+		CpuTarget:   cpuTarget,
+		MaxInstance: maxInstance,
 	}
 
 	_, err := client.FunctionCreate(function)
@@ -162,8 +173,9 @@ func fnGetMeta(c *cli.Context) error {
 	checkErr(err, "get function")
 
 	w := tabwriter.NewWriter(os.Stdout, 0, 0, 1, ' ', 0)
-	fmt.Fprintf(w, "%v\t%v\t%v\t%v\n",
-		f.Metadata.Name, f.Metadata.Uid, f.Environment.Name, strings.Join(f.ServiceInstances, ","))
+	fmt.Fprintf(w, "%v\t%v\t%v\t%v%v\n\t%v\n", "NAME", "UID", "ENV", "SVC_INSTANCE", "CPU_TARGET", "MAX_INSTANCE")
+	fmt.Fprintf(w, "%v\t%v\t%v\t%v\t%v\t%v\n",
+		f.Metadata.Name, f.Metadata.Uid, f.Environment.Name, strings.Join(f.ServiceInstances, ","), f.CpuTarget, f.MaxInstance)
 	w.Flush()
 	return err
 }
@@ -205,6 +217,16 @@ func fnUpdate(c *cli.Context) error {
 	}
 	function.ServiceInstances = serviceInstances
 
+	cpuTarget := c.Int("cputarget")
+	if cpuTarget > 0 && cpuTarget <= 100 {
+		function.CpuTarget = cpuTarget
+	}
+
+	maxInstance := c.Int("maxinstance")
+	if maxInstance > 0 {
+		function.MaxInstance = maxInstance
+	}
+
 	_, err = client.FunctionUpdate(function)
 	checkErr(err, "update function")
 
@@ -238,10 +260,12 @@ func fnList(c *cli.Context) error {
 
 	w := tabwriter.NewWriter(os.Stdout, 0, 0, 1, ' ', 0)
 
-	fmt.Fprintf(w, "%v\t%v\t%v\t%v\n", "NAME", "UID", "ENV", "SVC-INSTANCES")
+	fmt.Fprintf(w, "%v\t%v\t%v\t%v%v\n\t%v\n", "NAME", "UID", "ENV", "SVC_INSTANCE", "CPU_TARGET", "MAX_INSTANCE")
+
 	for _, f := range fns {
-		fmt.Fprintf(w, "%v\t%v\t%v\t%v\n",
-			f.Metadata.Name, f.Metadata.Uid, f.Environment.Name, strings.Join(f.ServiceInstances, ","))
+		fmt.Fprintf(w, "%v\t%v\t%v\t%v\t%v\t%v\n",
+			f.Metadata.Name, f.Metadata.Uid, f.Environment.Name,
+			strings.Join(f.ServiceInstances, ","), f.CpuTarget, f.MaxInstance)
 	}
 	w.Flush()
 
