@@ -122,11 +122,16 @@ func (fh *functionHandler) handler(responseWriter http.ResponseWriter, request *
 	var err error
 	metricCached := "true"
 	metricPath := request.URL.Path
+	metricName := fh.Function.Name
+	metricUid := fh.Function.Uid
 	traceGetService := opentracing.StartSpan("router::GetService", opentracing.ChildOf(traceHandler.Context()))
 	// cache lookup
 
 	if fh.Function.Name == "" && fh.Flow.Name != "" {
 		serviceUrl, _ = url.Parse(fission.FLOW_SERVER_ENDPOINT)
+		metricPath = "/fission-flow" + metricPath
+		metricName = fh.Flow.Name
+		metricUid = fh.Flow.Uid
 	} else {
 		// cache lookup
 		serviceUrl, err = fh.fmap.lookup(&fh.Function)
@@ -223,13 +228,13 @@ func (fh *functionHandler) handler(responseWriter http.ResponseWriter, request *
 
 	metricStatus := fmt.Sprint(wrapper.Status())
 
-	increaseHttpCalls(metricCached, fh.Function.Name, fh.Function.Uid,
+	increaseHttpCalls(metricCached, metricName, metricUid,
 		metricPath, metricStatus, request.Method)
-	observeHttpCallDelay(metricCached, fh.Function.Name, fh.Function.Uid,
+	observeHttpCallDelay(metricCached, metricName, metricUid,
 		metricPath, metricStatus, request.Method, float64(delay.Nanoseconds())/10e9)
-	observeHttpCallLatency(metricCached, fh.Function.Name, fh.Function.Uid,
+	observeHttpCallLatency(metricCached, metricName, metricUid,
 		metricPath, metricStatus, request.Method, float64(latency.Nanoseconds())/10e9)
-	observeHttpCallResponseSize(metricCached, fh.Function.Name, fh.Function.Uid,
+	observeHttpCallResponseSize(metricCached, metricName, metricUid,
 		metricPath, metricStatus, request.Method, float64(wrapper.ResponseSize()))
 	traceProxy.Finish()
 
