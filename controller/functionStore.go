@@ -46,6 +46,9 @@ func (fs *FunctionStore) Create(f *fission.Function) (string, error) {
 
 	f.Metadata.Uid = uid
 	f.Code = ""
+	if f.ServiceInstances == nil {
+		f.ServiceInstances = make([]string, 0)
+	}
 
 	err = fs.ResourceStore.create(f)
 	if err != nil {
