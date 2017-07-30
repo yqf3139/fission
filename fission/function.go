@@ -105,8 +105,8 @@ func fnCreate(c *cli.Context) error {
 		Environment:      fission.Metadata{Name: envName},
 		Code:             string(code),
 		ServiceInstances: serviceInstances,
-		CpuTarget:   cpuTarget,
-		MaxInstance: maxInstance,
+		CpuTarget:        cpuTarget,
+		MaxInstance:      maxInstance,
 	}
 
 	_, err := client.FunctionCreate(function)
@@ -173,7 +173,7 @@ func fnGetMeta(c *cli.Context) error {
 	checkErr(err, "get function")
 
 	w := tabwriter.NewWriter(os.Stdout, 0, 0, 1, ' ', 0)
-	fmt.Fprintf(w, "%v\t%v\t%v\t%v%v\n\t%v\n", "NAME", "UID", "ENV", "SVC_INSTANCE", "CPU_TARGET", "MAX_INSTANCE")
+	fmt.Fprintf(w, "%v\t%v\t%v\t%v\t%v\t%v\n", "NAME", "UID", "ENV", "SVC_INSTANCE", "CPU_TARGET", "MAX_INSTANCE")
 	fmt.Fprintf(w, "%v\t%v\t%v\t%v\t%v\t%v\n",
 		f.Metadata.Name, f.Metadata.Uid, f.Environment.Name, strings.Join(f.ServiceInstances, ","), f.CpuTarget, f.MaxInstance)
 	w.Flush()
@@ -260,7 +260,7 @@ func fnList(c *cli.Context) error {
 
 	w := tabwriter.NewWriter(os.Stdout, 0, 0, 1, ' ', 0)
 
-	fmt.Fprintf(w, "%v\t%v\t%v\t%v%v\n\t%v\n", "NAME", "UID", "ENV", "SVC_INSTANCE", "CPU_TARGET", "MAX_INSTANCE")
+	fmt.Fprintf(w, "%v\t%v\t%v\t%v\t%v\t\t%v\n", "NAME", "UID", "ENV", "SVC_INSTANCE", "CPU_TARGET", "MAX_INSTANCE")
 
 	for _, f := range fns {
 		fmt.Fprintf(w, "%v\t%v\t%v\t%v\t%v\t%v\n",

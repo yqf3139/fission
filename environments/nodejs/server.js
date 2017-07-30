@@ -17,7 +17,7 @@ const zipkinMiddleware = require('zipkin-instrumentation-express').expressMiddle
 const ctxImpl = new CLSContext(); // if you want to use CLS
 const recorder = new BatchRecorder({
     logger: new HttpLogger({
-        endpoint: 'http://zipkin.fission:9411/api/v1/spans'
+        endpoint: 'http://zipkin.fission-tracing:9411/api/v1/spans'
     })
 });
 const tracer = new Tracer({

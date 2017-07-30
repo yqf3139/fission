@@ -5,6 +5,7 @@ import (
 	"strconv"
 
 	"github.com/docopt/docopt-go"
+	"github.com/fission/fission"
 	"github.com/fission/fission/controller"
 	"github.com/fission/fission/kubewatcher"
 	"github.com/fission/fission/logger"
@@ -106,14 +107,14 @@ Use it to start one or more of the fission servers:
  Router implements HTTP triggers: it routes to running instances, working with the controller and poolmgr.
 
 Usage:
-  fission-bundle --controllerPort=<port> [--etcdUrl=<etcdUrl>] --filepath=<filepath>
-  fission-bundle --routerPort=<port> [--controllerUrl=<url> --poolmgrUrl=<url>]
-  fission-bundle --poolmgrPort=<port> [--controllerUrl=<url> --namespace=<namespace>]
-  fission-bundle --kubewatcher [--controllerUrl=<url> --routerUrl=<url>]
-  fission-bundle --logger
-  fission-bundle --timer [--controllerUrl=<url> --routerUrl=<url>]
-  fission-bundle --mqt   [--controllerUrl=<url> --routerUrl=<url>]
-  fission-bundle --service-adapter [--controllerUrl=<url> --routerUrl=<url>]
+  fission-bundle --controllerPort=<port> [--etcdUrl=<etcdUrl> --svcNamespace=<svcNamespace> --funcNamespace=<funcNamespace>] --filepath=<filepath>
+  fission-bundle --routerPort=<port> [--controllerUrl=<url> --poolmgrUrl=<url> --svcNamespace=<svcNamespace> --funcNamespace=<funcNamespace>]
+  fission-bundle --poolmgrPort=<port> [--controllerUrl=<url> --svcNamespace=<svcNamespace> --funcNamespace=<funcNamespace>]
+  fission-bundle --kubewatcher [--controllerUrl=<url> --routerUrl=<url> --svcNamespace=<svcNamespace> --funcNamespace=<funcNamespace>]
+  fission-bundle --logger [--svcNamespace=<svcNamespace> --funcNamespace=<funcNamespace>]
+  fission-bundle --timer [--controllerUrl=<url> --routerUrl=<url> --svcNamespace=<svcNamespace> --funcNamespace=<funcNamespace>]
+  fission-bundle --mqt   [--controllerUrl=<url> --routerUrl=<url> --svcNamespace=<svcNamespace> --funcNamespace=<funcNamespace>]
+  fission-bundle --service-adapter [--controllerUrl=<url> --routerUrl=<url> --svcNamespace=<svcNamespace> --funcNamespace=<funcNamespace>]
 Options:
   --controllerPort=<port>  Port that the controller should listen on.
   --routerPort=<port>      Port that the router should listen on.
@@ -123,7 +124,8 @@ Options:
   --routerUrl=<url>        Router URL.
   --etcdUrl=<etcdUrl>      Etcd URL.
   --filepath=<filepath>    Directory to store functions in.
-  --namespace=<namespace>  Kubernetes namespace in which to run function containers. Defaults to 'fission-function'.
+  --svcNamespace=<svcNamespace>  Kubernetes namespace in which to run function services. Defaults to 'fission'.
+  --funcNamespace=<funcNamespace>  Kubernetes namespace in which to run function containers. Defaults to 'fission-function'.
   --kubewatcher            Start Kubernetes events watcher.
   --logger                 Start logger.
   --timer 		   Start Timer.
@@ -135,12 +137,13 @@ Options:
 		log.Fatalf("Error: %v", err)
 	}
 
-	namespace := getStringArgWithDefault(arguments["--namespace"], "fission-function")
+	fission.FISSION_SVC_NAMESPACE = getStringArgWithDefault(arguments["--svcNamespace"], "fission")
+	fission.FISSION_FUNC_NAMESPACE = getStringArgWithDefault(arguments["--funcNamespace"], "fission-function")
 
-	controllerUrl := getStringArgWithDefault(arguments["--controllerUrl"], "http://controller.fission")
+	controllerUrl := getStringArgWithDefault(arguments["--controllerUrl"], "http://controller."+fission.FISSION_SVC_NAMESPACE)
 	etcdUrl := getStringArgWithDefault(arguments["--etcdUrl"], "http://etcd:2379")
-	poolmgrUrl := getStringArgWithDefault(arguments["--poolmgrUrl"], "http://poolmgr.fission")
-	routerUrl := getStringArgWithDefault(arguments["--routerUrl"], "http://router.fission")
+	poolmgrUrl := getStringArgWithDefault(arguments["--poolmgrUrl"], "http://poolmgr")
+	routerUrl := getStringArgWithDefault(arguments["--routerUrl"], "http://router")
 
 	if arguments["--controllerPort"] != nil {
 		port := getPort(arguments["--controllerPort"])
@@ -154,7 +157,7 @@ Options:
 
 	if arguments["--poolmgrPort"] != nil {
 		port := getPort(arguments["--poolmgrPort"])
-		runPoolmgr(port, controllerUrl, namespace)
+		runPoolmgr(port, controllerUrl, fission.FISSION_FUNC_NAMESPACE)
 	}
 
 	if arguments["--kubewatcher"] == true {

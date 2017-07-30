@@ -17,19 +17,19 @@ limitations under the License.
 package poolmgr
 
 import (
+	"fmt"
 	"log"
 	"net/http"
 	"strings"
-	"fmt"
 
 	"github.com/dchest/uniuri"
 	controllerclient "github.com/fission/fission/controller/client"
 	catalogclientset "github.com/kubernetes-incubator/service-catalog/pkg/client/clientset_generated/clientset"
+	"github.com/opentracing/opentracing-go"
+	zipkin "github.com/openzipkin/zipkin-go-opentracing"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
-	"github.com/opentracing/opentracing-go"
-	"github.com/prometheus/client_golang/prometheus/promhttp"
-	zipkin "github.com/openzipkin/zipkin-go-opentracing"
 )
 
 // Get a kubernetes client using the pod's service account.  This only
@@ -76,9 +76,9 @@ func serveMetric() {
 
 func initTracing(svcName string, port int) {
 	collector, _ := zipkin.NewHTTPCollector(
-		fmt.Sprintf("http://%s:9411/api/v1/spans", "zipkin.fission"))
+		fmt.Sprintf("http://%s:9411/api/v1/spans", "zipkin.fission-tracing"))
 	tracer, _ := zipkin.NewTracer(
-		zipkin.NewRecorder(collector, false, fmt.Sprintf("%v.fission:%v", svcName, port), svcName))
+		zipkin.NewRecorder(collector, false, fmt.Sprintf("%v:%v", svcName, port), svcName))
 	opentracing.SetGlobalTracer(tracer)
 }
 

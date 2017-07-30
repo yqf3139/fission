@@ -81,7 +81,7 @@ func Start(controllerUrl string, routerUrl string) error {
 	}
 
 	natsService := MakeNatsService("fissionMQTrigger", "fissionAdapter",
-		"nats://nats-streaming.fission:4222")
+		"nats://nats-streaming:4222")
 	minioAdapter := &MinioAdapterFactory{
 		natsService: natsService,
 	}

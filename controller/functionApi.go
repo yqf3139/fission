@@ -24,8 +24,8 @@ import (
 	"net/http/httputil"
 	"net/url"
 
-	"github.com/gorilla/mux"
 	log "github.com/Sirupsen/logrus"
+	"github.com/gorilla/mux"
 
 	"github.com/fission/fission"
 )

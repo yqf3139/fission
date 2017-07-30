@@ -36,9 +36,9 @@ func (fs *FunctionStore) Create(f *fission.Function) (string, error) {
 	}
 
 	_, err = fs.ResourceStore.writeVersion(f.Key(), &fission.Version{
-		Name: uuid.NewV4().String(),
-		Timestamp: fission.Timestamp{ Time: time.Now()},
-		Uid: uid,
+		Name:      uuid.NewV4().String(),
+		Timestamp: fission.Timestamp{Time: time.Now()},
+		Uid:       uid,
 	})
 	if err != nil {
 		return "", err
@@ -89,9 +89,9 @@ func (fs *FunctionStore) Update(f *fission.Function) (string, error) {
 	}
 
 	_, err = fs.ResourceStore.writeVersion(f.Key(), &fission.Version{
-		Name: uuid.NewV4().String(),
-		Timestamp: fission.Timestamp{ Time: time.Now()},
-		Uid: uid,
+		Name:      uuid.NewV4().String(),
+		Timestamp: fission.Timestamp{Time: time.Now()},
+		Uid:       uid,
 	})
 	if err != nil {
 		return "", err

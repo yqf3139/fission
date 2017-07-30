@@ -36,7 +36,7 @@ func MakeAdapterManager(factories map[string]AdapterFactory,
 }
 
 func (manager *AdapterManager) GetServiceInstance(name string) *meta_v1.Instance {
-	instance, err := manager.catalogClient.Instances("fission").Get(name, v1.GetOptions{})
+	instance, err := manager.catalogClient.Instances(fission.FISSION_SVC_NAMESPACE).Get(name, v1.GetOptions{})
 	if err != nil {
 		log.Println("Error getting instance ", name, err)
 		return nil
@@ -45,7 +45,7 @@ func (manager *AdapterManager) GetServiceInstance(name string) *meta_v1.Instance
 }
 
 func (manager *AdapterManager) GetInstanceCredentials(instance *meta_v1.Instance) map[string]string {
-	bindings, err := manager.catalogClient.Bindings("fission").List(v1.ListOptions{})
+	bindings, err := manager.catalogClient.Bindings(fission.FISSION_SVC_NAMESPACE).List(v1.ListOptions{})
 	if err != nil {
 		log.Println("Error getting binding", instance.Spec, err)
 		return nil
@@ -56,7 +56,7 @@ func (manager *AdapterManager) GetInstanceCredentials(instance *meta_v1.Instance
 			continue
 		}
 		// get secret
-		secret, err := manager.k8sClient.CoreV1().Secrets("fission").Get(
+		secret, err := manager.k8sClient.CoreV1().Secrets(fission.FISSION_SVC_NAMESPACE).Get(
 			binding.Spec.SecretName, v1.GetOptions{})
 		if err != nil {
 			log.Println("Error getting secret", binding.Spec.SecretName, err)

@@ -24,8 +24,8 @@ import (
 	"testing"
 	"time"
 
-	etcdClient "github.com/coreos/etcd/client"
 	log "github.com/Sirupsen/logrus"
+	etcdClient "github.com/coreos/etcd/client"
 	"golang.org/x/net/context"
 
 	"github.com/fission/fission"

@@ -17,9 +17,9 @@ limitations under the License.
 package fission
 
 import (
-	"time"
 	"fmt"
 	"strconv"
+	"time"
 )
 
 type (
@@ -38,8 +38,8 @@ type (
 		Environment      Metadata `json:"environment"`
 		Code             string   `json:"code"`
 		ServiceInstances []string `json:"serviceInstances"`
-		CpuTarget   int      `json:"cputarget,omitempty"`
-		MaxInstance int      `json:"maxinstance,omitempty"`
+		CpuTarget        int      `json:"cputarget,omitempty"`
+		MaxInstance      int      `json:"maxinstance,omitempty"`
 	}
 
 	// Environment identifies the language and OS specific
@@ -103,9 +103,9 @@ type (
 
 	// Version tracks version related info of the resource with Uid
 	Version struct {
-		Name      string         `json:"name"`
+		Name      string    `json:"name"`
 		Timestamp Timestamp `json:"timestamp"`
-		Uid       string          `json:"uid"`
+		Uid       string    `json:"uid"`
 	}
 
 	// Errors returned by the Fission API.
@@ -169,7 +169,7 @@ const (
 	ErrorNoSpace
 	ErrorNotImplmented
 
-	FLOW_SERVER_ENDPOINT = "http://nodered.fission:1880"
+	FLOW_SERVER_ENDPOINT = "http://nodered:1880"
 )
 
 // must match order and len of the above const

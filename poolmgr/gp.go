@@ -18,6 +18,7 @@ package poolmgr
 
 import (
 	"bytes"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"log"
@@ -27,7 +28,6 @@ import (
 	"net/url"
 	"strings"
 	"time"
-	"encoding/json"
 
 	"github.com/dchest/uniuri"
 	catalogclientset "github.com/kubernetes-incubator/service-catalog/pkg/client/clientset_generated/clientset"
@@ -36,8 +36,8 @@ import (
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/pkg/api/v1"
-	"k8s.io/client-go/pkg/apis/extensions/v1beta1"
 	autoscalingv1 "k8s.io/client-go/pkg/apis/autoscaling/v1"
+	"k8s.io/client-go/pkg/apis/extensions/v1beta1"
 
 	"github.com/fission/fission"
 )
@@ -256,7 +256,7 @@ func (gp *GenericPool) getFetcherRequestBody(metadata *fission.Metadata, f *fiss
 		}
 
 		ins := fission.ServiceInstance{Name: name}
-		instance, err := gp.catalogClient.Instances("fission").Get(name, meta_v1.GetOptions{})
+		instance, err := gp.catalogClient.Instances(fission.FISSION_SVC_NAMESPACE).Get(name, meta_v1.GetOptions{})
 		if err != nil {
 			ins.ErrorMessage = err.Error()
 			instancesMap[name] = ins
@@ -265,7 +265,7 @@ func (gp *GenericPool) getFetcherRequestBody(metadata *fission.Metadata, f *fiss
 		ins.ServiceClass = instance.Spec.ServiceClassName
 		// TODO check if the instance status is ready
 		// check if the instance has a binding
-		bindings, err := gp.catalogClient.Bindings("fission").List(meta_v1.ListOptions{})
+		bindings, err := gp.catalogClient.Bindings(fission.FISSION_SVC_NAMESPACE).List(meta_v1.ListOptions{})
 		if err != nil {
 			ins.ErrorMessage = err.Error()
 			instancesMap[name] = ins
@@ -277,7 +277,7 @@ func (gp *GenericPool) getFetcherRequestBody(metadata *fission.Metadata, f *fiss
 				continue
 			}
 			// get secret
-			secret, err := gp.kubernetesClient.CoreV1().Secrets("fission").Get(
+			secret, err := gp.kubernetesClient.CoreV1().Secrets(fission.FISSION_SVC_NAMESPACE).Get(
 				binding.Spec.SecretName, meta_v1.GetOptions{})
 			if err != nil {
 				ins.ErrorMessage = err.Error()

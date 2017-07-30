@@ -21,8 +21,8 @@ import (
 	"io/ioutil"
 	"net/http"
 
-	"github.com/gorilla/mux"
 	log "github.com/Sirupsen/logrus"
+	"github.com/gorilla/mux"
 
 	"github.com/fission/fission"
 )
