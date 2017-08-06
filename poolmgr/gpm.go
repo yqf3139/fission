@@ -93,7 +93,7 @@ func (gpm *GenericPoolManager) service() {
 			if !ok {
 				pool, err = MakeGenericPool(
 					gpm.controllerUrl, gpm.kubernetesClient, gpm.catalogClient, req.env,
-					1, // TODO configurable/autoscalable
+					3, // TODO configurable/autoscalable
 					gpm.namespace, gpm.fsCache, gpm.instanceId)
 				if err != nil {
 					req.responseChannel <- &response{error: err}

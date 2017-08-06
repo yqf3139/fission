@@ -231,9 +231,9 @@ func (fh *functionHandler) handler(responseWriter http.ResponseWriter, request *
 	increaseHttpCalls(metricCached, metricName, metricUid,
 		metricPath, metricStatus, request.Method)
 	observeHttpCallDelay(metricCached, metricName, metricUid,
-		metricPath, metricStatus, request.Method, float64(delay.Nanoseconds())/10e9)
+		metricPath, metricStatus, request.Method, float64(delay.Nanoseconds())/1e9)
 	observeHttpCallLatency(metricCached, metricName, metricUid,
-		metricPath, metricStatus, request.Method, float64(latency.Nanoseconds())/10e9)
+		metricPath, metricStatus, request.Method, float64(latency.Nanoseconds())/1e9)
 	observeHttpCallResponseSize(metricCached, metricName, metricUid,
 		metricPath, metricStatus, request.Method, float64(wrapper.ResponseSize()))
 	traceProxy.Finish()
